@@ -1,0 +1,80 @@
+name: 'tat-truck'
+notes: '
+  distill from 1110-truck-exp0
+  [Data] T&T(nb) Family, white background
+  [Model] 1000 planes, NerfExperts
+  [init] dense points (w/o box)
+  [Loss] mse_color + mse_point2plane (dense)
+  [Reg.] oscillate NDC
+'
+cuda: '0'
+checkpoint:
+  teacher: 'tat-truck.pth'
+  distill: 'tat-truck.pth'
+
+distill:
+  n_harmonic_functions_pos: 10
+  n_harmonic_functions_dir: 4
+  n_hidden_neurons_pos: 32
+  n_hidden_neurons_dir: 32
+  n_layers: 2
+
+model:
+  plane_num: 1000
+  init:
+    lrf_neighbors: 100
+    wh: 0.02
+    box_factor: 2
+    random_rate: 0.9
+  n_harmonic_functions_pos: 10
+  n_harmonic_functions_dir: 4
+  n_hidden_neurons_pos: 256
+  n_hidden_neurons_dir: 128
+  n_layers: 8
+  n_train_sample: 10000
+  n_infer_sample: 10000
+  anti_aliasing: True
+  premultiply_alpha: False
+  n_bake_sample: 10000
+  bake_res: 1024
+  filter_bar: 0.01
+  bake: False
+data:
+  path: 'data/TanksAndTemple/Truck'
+  image_size: [1080, 1920]
+  sample_rate: 0.2
+  batch_points: 10000
+  white_bg: True
+
+loss_weight:
+  color: 1.0
+  depth: 0.0
+  point2plane: 1.0
+  area: 0.0001
+  alpha: 0.0
+optimizer:
+  lr: 0.0005
+  lr_scheduler_step_size: 5000
+  lr_scheduler_gamma: 0.1
+
+train:
+  resume: True
+  freeze_geometry: True
+  epoch_teach: 1000
+  epoch: 5000
+  validation_epoch: 500
+  checkpoint_epoch: 10
+test:
+  mode: 'test_model'
+  folder: ''
+  vis:
+    id: ''
+    r: 3
+    c: [0.5, 0.5, 0.5]
+    alpha: 0.3
+seed: 0
+
+video:
+  traj_path: 'video/tanks/family/traj_2'
+  name: 'ours-family-traj2'
+  fps: 30

@@ -1,0 +1,99 @@
+name: 'replica-room2'
+notes: '
+  [Data] room_2
+  [Model] 500 planes, radiance field, from scratch
+  [init] dense points (w/ box)
+  [Loss] mse_color + mse_point2plane (dense + depth pred.)
+  [Reg.] oscillate NDC
+'
+cuda: '0'
+checkpoint:
+  teacher: 'replica-room2.pth'
+  distill: 'replica-room2.pth'
+
+distill:
+  n_harmonic_functions_pos: 10
+  n_harmonic_functions_dir: 4
+  n_hidden_neurons_pos: 32
+  n_hidden_neurons_dir: 32
+  n_layers: 2
+
+model:
+  plane_num: 500
+  init:
+    lrf_neighbors: 100
+    wh: 2
+    box_factor: 4
+    random_rate: 0.0
+  n_harmonic_functions_pos: 10
+  n_harmonic_functions_dir: 4
+  n_hidden_neurons_pos: 256
+  n_hidden_neurons_dir: 128
+  n_layers: 8
+  n_train_sample: 4096
+  n_infer_sample: 4096
+  anti_aliasing: True
+  premultiply_alpha: False
+  n_bake_sample: 10000
+  bake_res: 200
+  filter_bar: 0.001
+  bake: False
+data:
+  path: 'data/replica/room_2/'
+  image_size: [512, 512]
+  batch_points: 10000
+  white_bg: False
+
+loss_weight:
+  color: 1.0
+  depth: 0.0
+  point2plane: 1.0
+  area: 0.00000001
+  alpha: 0.0
+optimizer:
+  lr: 0.0005
+  lr_scheduler_step_size: 5000
+  lr_scheduler_gamma: 0.1
+
+train:
+  resume: True
+  freeze_geometry: True
+  epoch_teach: 1000
+  epoch: 2000
+  validation_epoch: 500
+  checkpoint_epoch: 20
+test:
+  mode: 'test_model'
+  folder: ''
+  vis:
+    id: ''
+    r: 3
+    c: [0.5, 0.5, 0.5]
+    alpha: 0.3
+seed: 0
+
+video:
+  traj_path: 'video/room_2/traj_1'
+  name: 'ours-room2-traj1'
+  fps: 30
+
+# finetune:
+#   epoch: 200
+#   validation_epoch: 1000
+#   checkpoint_epoch: 100
+#   checkpoint_target: '1101-room2-exp0-fast.pth'
+
+# distill:
+#   teach: True
+#   epoch: 10000
+#   validation_epoch: 500
+#   checkpoint_epoch: 20
+#   checkpoint: '1101-room2-exp0-distill.pth'
+#   plane_res: 1024
+#   model:
+#     n_harmonic_functions_pos: 10
+#     n_harmonic_functions_dir: 4
+#     n_hidden_neurons_pos: 64
+#     n_hidden_neurons_dir: 32
+#     n_layers: 3
+#   loss_teacher: 1.0

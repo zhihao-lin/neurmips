@@ -7,6 +7,10 @@ Pytorch implementation of paper: "NeurMiPs: Neural Mixture of Planar Experts for
 ## Setup
 - Datasets
 - conda environment
+```
+conda env create -f environment.yml
+conda activate neurmips
+```
 - CUDA extension
 - pretrained models
 ## Usage 
