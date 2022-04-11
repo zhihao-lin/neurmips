@@ -7,7 +7,7 @@ import hydra
 import copy
 import vedo
 from mnh.dataset_replica import ReplicaDataset
-from mnh.dataset_TanksAndTemples import TanksAndTemplesDataset
+from mnh.dataset_tat import TanksAndTemplesDataset
 from mnh.utils_vedo import visualize_geometry
 from mnh.stats import StatsLogger
 from mnh.utils import *
@@ -25,7 +25,6 @@ DATA_DIR = os.path.join(CURRENT_DIR, 'data')
 @hydra.main(config_path=CONFIG_DIR, config_name=TEST_CONFIG)
 def main(cfg: DictConfig):
     # Set random seed for reproduction
-    set_fp16 = False
     np.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
 
@@ -42,7 +41,7 @@ def main(cfg: DictConfig):
     test_path  = os.path.join(CURRENT_DIR, cfg.data.path, 'test')
     train_dataset, valid_dataset = None, None
     if 'replica' in cfg.data.path:
-        train_dataset = ReplicaDataset(folder=train_path, read_points=True, sample_points=cfg.data.batch_points)
+        train_dataset = ReplicaDataset(folder=train_path, read_points=True, batch_points=cfg.data.batch_points)
         valid_dataset = ReplicaDataset(folder=valid_path)
     elif 'Tanks' in cfg.data.path or 'BlendedMVS' in cfg.data.path:
         train_dataset = TanksAndTemplesDataset(
@@ -105,10 +104,6 @@ def main(cfg: DictConfig):
             )
             del points
 
-    if set_fp16:
-        torch.set_default_dtype(torch.float16)
-        model = model.half()
-        model.ndc_grid = model.ndc_grid.half()
     if cfg.model.accelerate.bake == True:
         model.bake_planes_alpha()
     output_dir = os.path.join(CURRENT_DIR, 'output_images', cfg.name, 'experts')
@@ -197,7 +192,7 @@ def main(cfg: DictConfig):
         dir_alpha = os.path.join(output_dir, 'alpha_maps')
         os.makedirs(dir_alpha, exist_ok=True)
         planes_alpha = model.planes_alpha.squeeze()
-        for i in range(model.plane_num):
+        for i in range(model.n_plane):
             a = planes_alpha[i]
             a = tensor2Image(a)
             a.save(os.path.join(dir_alpha, '{:0>4d}.png').format(i))

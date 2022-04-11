@@ -32,6 +32,22 @@ def get_ndc_grid(
     ndc_grid = torch.cat([xy_grid, torch.ones(height, width, 1)], dim=-1)
     return ndc_grid
 
+def oscillate_ndc_grid(ndc_grid):
+    '''
+    oscillate NDC girds within pixel w/h when trainig -> anti-aliasing
+    Args & Return:
+        ndc_grid: (h, w, 3)
+    '''
+    h, w, _ = ndc_grid.size()
+    device = ndc_grid.device
+    half_pix_w = 1.0 / w
+    half_pix_h = 1.0 / h
+    noise_w = (torch.rand(h, w, device=device) - 0.5) * 2 * half_pix_w
+    noise_h = (torch.rand(h, w, device=device) - 0.5) * 2 * half_pix_h
+    ndc_grid[:,:,0] += noise_w
+    ndc_grid[:,:,1] += noise_h
+    return ndc_grid
+
 def filter_tiny_values(tensor, eps:float=1e-5):
     tensor_sign = torch.sign(tensor)
     tensor_sign[tensor_sign == 0] = 1
@@ -336,8 +352,6 @@ def unproject_points(
     unproject ndc_points into world coordinates
     '''
     k_inv = get_camera_k_inv(camera)
-    # set to fp16
-    # k_inv = k_inv.half()
     proj = k_inv.new_zeros(4, 4)
     proj[:3, :3] = k_inv 
     proj[-1, -1] = 1

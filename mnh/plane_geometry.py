@@ -6,21 +6,21 @@ import torch.nn.functional as F
 class PlaneGeometry(nn.Module):
     def __init__(
         self,
-        plane_num:int,
+        n_plane:int,
         learn_size:bool=True
     ):
         super().__init__()
-        self.plane_num = plane_num
-        self.center = nn.Parameter(torch.FloatTensor(plane_num, 3))
-        self.xy = nn.Parameter(torch.FloatTensor(plane_num, 3, 2))
-        # self.yz = nn.Parameter(torch.FloatTensor(plane_num, 3, 2))
-        self.wh = nn.Parameter(torch.FloatTensor(plane_num, 2))
+        self.n_plane = n_plane
+        self.center = nn.Parameter(torch.FloatTensor(n_plane, 3))
+        self.xy = nn.Parameter(torch.FloatTensor(n_plane, 3, 2))
+        # self.yz = nn.Parameter(torch.FloatTensor(n_plane, 3, 2))
+        self.wh = nn.Parameter(torch.FloatTensor(n_plane, 2))
         if learn_size == False:
             self.wh.requires_grad = False
 
         self.center.data.uniform_(0, 1)
         self.wh.data[:] = 1
-        eyes = torch.eye(3)[None].repeat(plane_num, 1, 1)
+        eyes = torch.eye(3)[None].repeat(n_plane, 1, 1)
         self.xy.data = eyes[:,:,:2]
         # self.yz.data = eyes[:,:,:2]
 
@@ -34,7 +34,7 @@ class PlaneGeometry(nn.Module):
         corner_max = torch.max(points - mean, dim=0)[0] + mean 
         corner_min = torch.min(points - mean, dim=0)[0] + mean
         
-        plane_n = self.plane_num
+        plane_n = self.n_plane
         alpha = torch.rand(plane_n, 3, device=points.device)
         centers = alpha * corner_min.unsqueeze(0) + (1 - alpha) * corner_max.unsqueeze(0)
         self.center.data = centers
@@ -55,7 +55,7 @@ class PlaneGeometry(nn.Module):
             -roation: local PCA basis
             -size: specified in args
         '''
-        sample_idx, center = farthest_point_sample(points, self.plane_num)
+        sample_idx, center = farthest_point_sample(points, self.n_plane)
         lrf = get_points_lrf(points, neighbor_num=lrf_neighbors, indices=sample_idx) #(point_n, 3, 3)
         self.center.data = center
         self.xy.data = lrf[:,:,:2]
@@ -97,7 +97,7 @@ class PlaneGeometry(nn.Module):
         ], dim=0)
 
         face_n = 6 
-        sample_n = self.plane_num - face_n
+        sample_n = self.n_plane - face_n
         if random_rate > 0:
             rand_n = int(sample_n * random_rate)
             fps_n = sample_n - rand_n
@@ -138,7 +138,7 @@ class PlaneGeometry(nn.Module):
             resolution 
         Return
             plane points in world coordinate
-            (plane_num, res, res, 3) 
+            (n_plane, res, res, 3) 
         '''
         device = self.center.device 
         pix_max =  0.5 * (1 - 0.5/resolution)
@@ -148,14 +148,14 @@ class PlaneGeometry(nn.Module):
         plane_xy = torch.flip(plane_xy, dims=[-1]) #(res, res, 2), last dim=(x, y) -> in (w, h) direction
         
 
-        planes_xy = plane_xy.view(1, -1, 2).repeat(self.plane_num, 1, 1) #(plane_n, res*res, 2)
+        planes_xy = plane_xy.view(1, -1, 2).repeat(self.n_plane, 1, 1) #(plane_n, res*res, 2)
         planes_xy = planes_xy * self.wh.unsqueeze(1) 
         basis = self.basis() #(plane_n, 3, 3)
         basis_xy = basis[:, :, :-1] #(plane_n, 3, 2)
 
         from_center = torch.bmm(planes_xy, basis_xy.transpose(1, 2)) #(plane_n, res*res, 3)
         planes_points = self.center.unsqueeze(1) + from_center
-        planes_points = planes_points.view(self.plane_num, resolution, resolution, 3)
+        planes_points = planes_points.view(self.n_plane, resolution, resolution, 3)
         return planes_points
 
     def sample_planes_points(self, points_n):
@@ -166,7 +166,7 @@ class PlaneGeometry(nn.Module):
             planes_idx: (plane_n*sample_n, )
         '''
         device = self.center.device
-        sample_n = math.ceil(points_n / self.plane_num) #sample number per plane
+        sample_n = math.ceil(points_n / self.n_plane) #sample number per plane
         sample_uv = torch.rand(sample_n, 2, device=device) - 0.5 #(sample_n, 2)
         sample_coord = torch.einsum('pd,sd->psd', self.wh, sample_uv) #(planes_n, sample_n, 2)
         basis = self.basis() #(plane_n, 3, 3)
@@ -175,7 +175,7 @@ class PlaneGeometry(nn.Module):
         planes_points = self.center.unsqueeze(1) + world_coord # (plane_n, sample_n, 3)        
         planes_points = planes_points.detach()
 
-        planes_idx = torch.arange(self.plane_num, device=device)
+        planes_idx = torch.arange(self.n_plane, device=device)
         planes_idx = planes_idx.unsqueeze(1).repeat(1, sample_n)
         
         planes_points = planes_points.view(-1, 3)

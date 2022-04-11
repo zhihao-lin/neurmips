@@ -19,8 +19,6 @@ def grid_sample_planes(
         in_planes: (plane_n, sample_n) True if sample inside plane
     '''
     norm_scale = (-2/planes_wh).unsqueeze(1) #(plane_n, 1, 2)
-    # set to fp16
-    # norm_scale = norm_scale.half()
     grid_points = sample_points * norm_scale 
     grid_points = grid_points.unsqueeze(1) #(plane_n, 1, sample_n, 2)
     sampled_content = F.grid_sample(
@@ -89,12 +87,6 @@ def freeze_model(model):
     for param in model.parameters():
         param.requires_grad = False 
 
-def test():
-    points = torch.randn(100, 200, 2)
-    wh = torch.rand(100, 2)
-    in_planes = check_inside_planes(points, wh)
-    print(torch.sum(in_planes))
-
 def detect_invalid_values(name:str, tensor):
     numel = tensor.numel()
     inf_num = torch.sum(torch.isinf(tensor)) 
@@ -116,5 +108,4 @@ def check_valid_model(name:str, model):
             detect_invalid_values('[{}][{}], grad.'.format(name, p_name), param.grad)
 
 if __name__ == '__main__':
-    # test_grid_sample()
-    test()
+    test_grid_sample()

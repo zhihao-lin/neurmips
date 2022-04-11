@@ -1,14 +1,14 @@
 import torch 
 import torch.nn.functional as F
 from mnh.utils import *
-from mnh.model_multiple import Model_multiple
+from mnh.model_experts import ModelExperts
 from mnh.utils_model import *
 from mnh.utils_camera import *
 from omegaconf import DictConfig
 
 def get_model_from_config(cfg: DictConfig):
-    model = Model_multiple(
-        plane_num=cfg.model.n_plane,
+    model = ModelExperts(
+        n_plane=cfg.model.n_plane,
         image_size=cfg.data.image_size,
         # # Radiance field 
         n_harmonic_functions_pos=cfg.model.mlp_experts.n_harmonic_functions_pos,
@@ -24,7 +24,7 @@ def get_model_from_config(cfg: DictConfig):
         # accelerate
         n_bake_sample=cfg.model.accelerate.n_bake_sample,
         bake_res=cfg.model.accelerate.bake_res, 
-        filter_bar=cfg.model.accelerate.thresh,
+        filter_thresh=cfg.model.accelerate.thresh,
         white_bg=cfg.data.white_bg
     )
     return model 

@@ -1,26 +1,11 @@
 import os
 import argparse
 import vedo
-from PIL import Image
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
-from matplotlib import pyplot as plt
-from pytorch3d.renderer import PerspectiveCameras, FoVPerspectiveCameras
-from .utils_camera import *
-from .dataset_replica import *
+from torch.utils.data import Dataset
+from pytorch3d.renderer import PerspectiveCameras
 from .utils import random_sample_points, get_image_tensors
-
-def filter_points(points, filter_ratio:float=0.8):
-    '''
-    filter out outlier points 
-    '''
-    center = torch.mean(points, dim=0)
-    dist2center = torch.sum((points - center[None])**2, dim=-1) 
-    ths = torch.quantile(dist2center, filter_ratio)
-    inlier = dist2center < ths 
-    points = points[inlier]
-    return points
 
 def get_camera_intrinsic(path):
     with open(path, 'r') as file:
@@ -40,22 +25,17 @@ def screen_to_ndc(intrinsic):
     px_new = -(px - half_w) / half_w
     py_new = -(py - half_h) / half_h
     return [W, H, fx_new, fy_new, px_new, py_new]
-
-
 class TanksAndTemplesDataset(Dataset):
     def __init__(
         self,
         folder:str,
         read_points:bool=False,
         sample_rate:float=0.1,
-        batch_points:int=10000,
-        fp16:bool=False
+        batch_points:int=10000
     ):
         R = np.load(os.path.join(folder, 'R.npy'))
         T = np.load(os.path.join(folder, 'T.npy'))
         R, T = torch.tensor(R), torch.tensor(T)
-        if fp16:
-            R, T = R.half(), T.half()
         self.R = R 
         self.T = T
 
@@ -82,22 +62,17 @@ class TanksAndTemplesDataset(Dataset):
         self.cameras = cameras
 
         images = get_image_tensors(os.path.join(folder, 'images'))
-        if fp16:
-            images = images.half()
         self.images = images
 
         self.sparse_points = None
         self.dense_points = None
         self.have_points = read_points
+        self.batch_points = batch_points 
         if read_points:
             dense_path = os.path.join(folder, 'points3D.npy')
             dense_points = torch.FloatTensor(np.load(dense_path))
             dense_points = random_sample_points(dense_points, sample_rate)
-            if fp16:
-                dense_points = dense_points.half()
             self.dense_points = dense_points
-
-        self.batch_points = batch_points 
 
     def get_camera_centers(self):
         R, T = self.R, self.T 
@@ -110,7 +85,6 @@ class TanksAndTemplesDataset(Dataset):
     def __getitem__(self, index):
         if self.have_points:
             dense_n = self.dense_points.size(0)
-            # sample_idx = torch.randperm(dense_n)[:self.batch_points]
             sample_idx = torch.rand(self.batch_points)
             sample_idx = (sample_idx * dense_n).long()
             points = self.dense_points[sample_idx]
@@ -131,35 +105,11 @@ def main():
 
     dataset = TanksAndTemplesDataset(args.folder, read_points=True, sample_rate=0.2)
     data = dataset[0]
-    color = data['color']
     points = data['points']
     points_dense = dataset.dense_points
     print('dense points: {}'.format(points_dense.size()))
     points = vedo.Points(points_dense)
     vedo.show(points, axes=1)
 
-def get_points_from_file(path):
-    with open(path, 'r') as file:
-        lines = file.readlines()
-        lines = lines[3:]
-        points = []
-        for line in lines:
-            xyz_str = line.split(' ')[1:4]
-            xyz= [float(s) for s in xyz_str]
-            points.append(xyz)
-        points = np.array(points)
-        return points
-
-def save_points():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-folder')
-    args = parser.parse_args()
-
-    points = get_points_from_file(os.path.join(args.folder, 'points3D.txt'))
-    path = os.path.join(args.folder, 'points3D.npy')
-    np.save(path, points)
-
 if __name__ == '__main__':
     main()
-    # convert_background()
-    # save_points()

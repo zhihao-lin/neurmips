@@ -8,13 +8,12 @@ from .utils_camera import *
 from .utils_model import *
 from .plane_geometry import PlaneGeometry
 from .implicit_experts import NerfExperts
-from .model_mnh import oscillate_ndc_grid
 from .utils import *
 
-class Model_multiple(nn.Module):
+class ModelExperts(nn.Module):
     def __init__(
         self,
-        plane_num: int,
+        n_plane: int,
         image_size: Tuple[int],
         # Radiance field 
         n_harmonic_functions_pos:int,
@@ -30,12 +29,12 @@ class Model_multiple(nn.Module):
         # accelerate
         n_bake_sample:int,
         bake_res:int,
-        filter_bar: float,
+        filter_thresh: float,
         white_bg:bool
     ):
         super().__init__()
-        self.plane_num = plane_num
-        self.plane_geo = PlaneGeometry(plane_num)
+        self.n_plane = n_plane
+        self.plane_geo = PlaneGeometry(n_plane)
         self.image_size = image_size
         self.ndc_grid = get_ndc_grid(image_size)
 
@@ -45,7 +44,7 @@ class Model_multiple(nn.Module):
             n_hidden_neurons_pos,
             n_hidden_neurons_dir,
             n_layers,
-            n_experts=plane_num
+            n_experts=n_plane
         )
 
         self.n_train_sample = n_train_sample 
@@ -56,7 +55,7 @@ class Model_multiple(nn.Module):
         self.planes_alpha = None
         self.n_bake_sample = n_bake_sample
         self.bake_res = bake_res
-        self.filter_bar = filter_bar 
+        self.filter_thresh = filter_thresh 
         self.white_bg = white_bg
 
     def compute_geometry_loss(self, points):
@@ -66,10 +65,10 @@ class Model_multiple(nn.Module):
         resolution = self.bake_res
         planes_points = self.plane_geo.get_planes_points(resolution) #(plane_n, res, res, 3)
         planes_points = planes_points.view(-1, 3)
-        planes_idx = torch.arange(self.plane_num, device=planes_points.device)
+        planes_idx = torch.arange(self.n_plane, device=planes_points.device)
         planes_idx = planes_idx.view(-1, 1, 1).repeat(1, resolution, resolution).view(-1)
 
-        points_total_n = (resolution ** 2) * self.plane_num
+        points_total_n = (resolution ** 2) * self.n_plane
         sample_n = self.n_bake_sample
         chunk_n = math.ceil(points_total_n / sample_n)
         planes_alpha = []
@@ -86,7 +85,7 @@ class Model_multiple(nn.Module):
                 planes_alpha.append(alpha)
         
         planes_alpha = torch.cat(planes_alpha, dim=0)
-        planes_alpha = planes_alpha.view(self.plane_num, 1, resolution, resolution)
+        planes_alpha = planes_alpha.view(self.n_plane, 1, resolution, resolution)
         self.planes_alpha = planes_alpha #(plane_n, 1, res, res)
         torch.cuda.empty_cache()
         print('Baked planes alpha as [{} * {}]'.format(resolution, resolution))
@@ -136,7 +135,7 @@ class Model_multiple(nn.Module):
         view_dirs = get_normalized_direction(camera, world_points)
         points_rgba = world_points.new_zeros(*world_points.shape[:2], 4)
 
-        for i in range(self.plane_num):
+        for i in range(self.n_plane):
             hit_i = hit[i] #(piont_n,)
             if hit_i.any():
                 pts  = world_points[i, hit_i]
@@ -271,7 +270,7 @@ class Model_multiple(nn.Module):
         depth, sort_idx = self.sort_depth_index(planes_depth)
         alpha = alpha_baked[sort_idx] #(plane_n, point_n)
         alpha_weight = compute_alpha_weight(alpha, normalize=self.premultiply_alpha)
-        contrib = alpha_weight > self.filter_bar
+        contrib = alpha_weight > self.filter_thresh
         hit = hit[sort_idx] #(plane_n, point_n)
         hit = torch.logical_and(hit, contrib)
         if hit.any() == False:
@@ -374,8 +373,8 @@ def test_forward():
     from pytorch3d.renderer import PerspectiveCameras
     device = torch.device('cuda:0')
 
-    model = Model_multiple(
-        plane_num=10,
+    model = ModelExperts(
+        n_plane=10,
         image_size=[200, 200],
         n_harmonic_functions_pos=10,
         n_harmonic_functions_dir=4,
@@ -390,7 +389,7 @@ def test_forward():
         # accelerate
         n_bake_sample=1024,
         bake_res=200,
-        filter_bar=0.01,
+        filter_thresh=0.01,
         white_bg=False
     ).to(device)
 

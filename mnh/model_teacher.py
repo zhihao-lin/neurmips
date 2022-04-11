@@ -5,29 +5,13 @@ import torch.nn as nn
 from .utils_camera import *
 from .utils_model import *
 from .plane_geometry import PlaneGeometry
-from .harmonic_embedding import HarmonicEmbedding
 from .implicit_function import NeuralRadianceField
 from .utils import *
 
-def oscillate_ndc_grid(ndc_grid):
-    '''
-    oscillate NDC girds within pixel w/h when trainig -> anti-aliasing
-    Args & Return:
-        ndc_grid: (h, w, 3)
-    '''
-    h, w, _ = ndc_grid.size()
-    device = ndc_grid.device
-    half_pix_w = 1.0 / w
-    half_pix_h = 1.0 / h
-    noise_w = (torch.rand(h, w, device=device) - 0.5) * 2 * half_pix_w
-    noise_h = (torch.rand(h, w, device=device) - 0.5) * 2 * half_pix_h
-    ndc_grid[:,:,0] += noise_w
-    ndc_grid[:,:,1] += noise_h
-    return ndc_grid
-class Model_rf(nn.Module):
+class ModelTeacher(nn.Module):
     def __init__(
         self,
-        plane_num: int,
+        n_plane: int,
         image_size: Tuple[int],
         # Radiance field 
         n_harmonic_functions_pos:int,
@@ -43,12 +27,12 @@ class Model_rf(nn.Module):
         # accelerate
         n_bake_sample:int,
         bake_res:int,
-        filter_bar:float,
+        filter_thresh:float,
         white_bg:bool
     ):
         super().__init__()
-        self.plane_num = plane_num
-        self.plane_geo = PlaneGeometry(plane_num)
+        self.n_plane = n_plane
+        self.plane_geo = PlaneGeometry(n_plane)
         self.image_size = image_size
         self.ndc_grid = get_ndc_grid(image_size)
 
@@ -68,7 +52,7 @@ class Model_rf(nn.Module):
         self.planes_alpha = None
         self.n_bake_sample = n_bake_sample
         self.bake_res = bake_res
-        self.filter_bar = filter_bar 
+        self.filter_thresh = filter_thresh 
         self.white_bg = white_bg
 
     def compute_geometry_loss(self, points):
@@ -78,7 +62,7 @@ class Model_rf(nn.Module):
         resolution = self.bake_res
         planes_points = self.plane_geo.get_planes_points(resolution) #(plane_n, res, res, 3)
         planes_points = planes_points.view(-1, 3)
-        points_total_n = (resolution ** 2) * self.plane_num
+        points_total_n = (resolution ** 2) * self.n_plane
         sample_n = self.n_bake_sample
         chunk_n = math.ceil(points_total_n / sample_n)
         planes_alpha = []
@@ -93,7 +77,7 @@ class Model_rf(nn.Module):
                 alpha = rgba[..., -1]
                 planes_alpha.append(alpha)
         planes_alpha = torch.cat(planes_alpha, dim=0)
-        planes_alpha = planes_alpha.view(self.plane_num, 1, resolution, resolution)
+        planes_alpha = planes_alpha.view(self.n_plane, 1, resolution, resolution)
         self.planes_alpha = planes_alpha #(plane_n, 1, res, res)
         torch.cuda.empty_cache()
         print('Baked planes alpha as [{} * {}]'.format(resolution, resolution))
@@ -245,7 +229,7 @@ class Model_rf(nn.Module):
         depth, sort_idx = self.sort_depth_index(planes_depth)
         alpha = alpha_baked[sort_idx] #(plane_n, point_n)
         alpha_weight = compute_alpha_weight(alpha, normalize=self.premultiply_alpha)
-        contrib = alpha_weight > self.filter_bar
+        contrib = alpha_weight > self.filter_thresh
         alpha[contrib == False] = 0
         
         world_points = world_points[sort_idx] #(plane_n, point_n, 3)
@@ -341,77 +325,3 @@ class Model_rf(nn.Module):
         else: 
             output = self.forward_full_image(camera, ndc_points_full)
         return output
-
-class RadianceField(nn.Module):
-    def __init__(
-        self,
-        n_harmonic_functions_pos:int=6,
-        n_harmonic_functions_dir:int=4,
-        n_hidden_neurons_pos:int=256,
-        n_hidden_neurons_dir:int=128,
-        n_layers:int=8,
-        pos_dim:int=3
-    ):
-        '''
-        This module follows the design of nerf-pytorch3d/implicit_function.py 
-        '''
-        super().__init__()
-        self.harmonic_embedding_pos = HarmonicEmbedding(n_harmonic_functions_pos)
-        self.harmonic_embedding_dir = HarmonicEmbedding(n_harmonic_functions_dir)
-        dir_dim = 3
-        embedding_dim_xyz = n_harmonic_functions_pos * 2 * pos_dim + pos_dim
-        embedding_dim_dir = n_harmonic_functions_dir * 2 * dir_dim + dir_dim
-
-        layers = []
-        for i in range(n_layers):
-            in_dim = n_hidden_neurons_pos
-            out_dim = n_hidden_neurons_pos
-            acti = nn.ReLU(True)
-            if i == 0:
-                in_dim = embedding_dim_xyz
-            layers += [nn.Linear(in_dim, out_dim), acti]
-        self.pos_net = nn.Sequential(*layers)
-
-        self.alpha_layer = nn.Linear(n_hidden_neurons_pos, 1)
-        self.color_layer = nn.Sequential(
-            nn.Linear(n_hidden_neurons_pos + embedding_dim_dir, n_hidden_neurons_dir),
-            nn.ReLU(True),
-            nn.Linear(n_hidden_neurons_dir, 3)
-        )
-
-    def forward(self, 
-        points, 
-        directions
-    ):
-        '''
-        Args
-            points: (..., 3)
-            directions: normalized (..., 3)
-        Return 
-            RGBA values: (..., 4)        
-        '''
-        harmonic_pos = self.harmonic_embedding_pos(points)
-        harmonic_pos = torch.cat([harmonic_pos, points], dim=-1)
-        harmonic_dir = self.harmonic_embedding_dir(directions)
-        harmonic_dir = torch.cat([harmonic_dir, directions], dim=-1)
-
-        features = self.pos_net(harmonic_pos)
-        alpha = self.alpha_layer(features)
-
-        features_dir = torch.cat([features, harmonic_dir], dim=-1)
-        color = self.color_layer(features_dir)
-
-        output = torch.cat([color, alpha], dim=-1)
-        output = torch.sigmoid(output)
-        return output
-
-def test_radiance_field():
-    points = torch.randn(1024, 3)
-    direcs = torch.randn(1024, 3)
-
-    model = RadianceField()
-    output = model(points, direcs)
-    print(output.size())
-
-if __name__ == '__main__':
-    test_radiance_field()

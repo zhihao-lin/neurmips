@@ -6,8 +6,8 @@ import torch.nn.functional as F
 from omegaconf import DictConfig, OmegaConf
 import hydra
 import vedo
-from mnh.dataset_replica import ReplicaDataset
-from mnh.dataset_TanksAndTemples import TanksAndTemplesDataset
+from mnh.dataset_replica import ReplicaDataset, dataset_to_depthpoints
+from mnh.dataset_tat import TanksAndTemplesDataset
 from mnh.utils_vedo import visualize_geometry
 from mnh.stats import StatsLogger, WandbLogger
 from mnh.utils import *
@@ -25,7 +25,6 @@ DATA_DIR = os.path.join(CURRENT_DIR, 'data')
 @hydra.main(config_path=CONFIG_DIR, config_name=TEST_CONFIG)
 def main(cfg: DictConfig):
     # Set random seed for reproduction
-    set_fp16 = False
     np.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
 
@@ -42,7 +41,7 @@ def main(cfg: DictConfig):
     test_path  = os.path.join(CURRENT_DIR, cfg.data.path, 'test')
     train_dataset, valid_dataset = None, None
     if 'replica' in cfg.data.path:
-        train_dataset = ReplicaDataset(folder=train_path, read_points=True, sample_points=cfg.data.batch_points)
+        train_dataset = ReplicaDataset(folder=train_path, read_points=True, batch_points=cfg.data.batch_points)
         valid_dataset = ReplicaDataset(folder=valid_path)
     elif 'Tanks' in cfg.data.path or 'BlendedMVS' in cfg.data.path:
         train_dataset = TanksAndTemplesDataset(
@@ -103,11 +102,7 @@ def main(cfg: DictConfig):
             )
         del points 
         torch.cuda.empty_cache()
-
-    if set_fp16:
-        torch.set_default_dtype(torch.float16)
-        model = model.half()
-        model.ndc_grid = model.ndc_grid.half()
+    
     if cfg.model.accelerate.bake == True:
         model.bake_planes_alpha()
     output_dir = os.path.join(CURRENT_DIR, 'output_images', cfg.name, 'teacher')
@@ -212,7 +207,7 @@ def main(cfg: DictConfig):
     if cfg.test.mode == 'planes':
         model.bake_planes_alpha(200)
         model = model.cpu()
-        plane_num = model.plane_num
+        n_plane = model.n_plane
         plane_geo = model.plane_geo
         centers = plane_geo.center.detach().numpy()
         rotations = plane_geo.basis().detach().numpy()
@@ -220,8 +215,8 @@ def main(cfg: DictConfig):
         planes_alpha = model.planes_alpha.squeeze().cpu().detach().numpy()
         
         planes = []
-        for i in range(plane_num):
-            print(f'{i+1}/{plane_num}')
+        for i in range(n_plane):
+            print(f'{i+1}/{n_plane}')
             plane = get_vedo_alpha_plane(
                 centers[i],
                 rotations[i],
@@ -258,7 +253,7 @@ def main(cfg: DictConfig):
             'alpha':0.2
         }
         for split, dataset in datasets.items():
-            pts, _ = dataset_to_depthpoints(dataset)
+            pts = dataset_to_depthpoints(dataset)
             pts = vedo.Points(pts, r=1, c=(0.5, 0.5, 0.5), alpha=1)
             points.append(pts)
             for i in range(len(dataset)):
@@ -369,8 +364,8 @@ def main(cfg: DictConfig):
         np.save(os.path.join(geo_dir, 'world2plane.npy'), world2plane)
 
         planes_verts = []
-        plane_num = cfg.model.n_plane
-        for i in range(plane_num):
+        n_plane = cfg.model.n_plane
+        for i in range(n_plane):
             c = center[i]
             x, y = basis[i,:,0], basis[i,:,1]
             x_s, y_s = x*(wh[i, 0]/2), y*(wh[i, 1]/2)
@@ -384,12 +379,12 @@ def main(cfg: DictConfig):
         cam_ref = datasets['train'][0]['camera'].to(device)
         plane_geo = model.plane_geo
         resolution = cfg.model.accelerate.bake_res
-        plane_num = cfg.model.n_plane
+        n_plane = cfg.model.n_plane
 
         planes_points = plane_geo.get_planes_points(resolution) #(plane_n, res, res, 3)
         planes_points = planes_points.view(-1, 3)
         sample_num = cfg.model.accelerate.n_bake_sample
-        points_total = (resolution ** 2) * plane_num
+        points_total = (resolution ** 2) * n_plane
         chunk_num = math.ceil(points_total / sample_num)
         planes_rgba = []
         with torch.no_grad():
@@ -402,11 +397,11 @@ def main(cfg: DictConfig):
                 rgba = rgba.detach()
                 planes_rgba.append(rgba)
         planes_rgba = torch.cat(planes_rgba, dim=0)
-        planes_rgba = planes_rgba.view(plane_num, resolution, resolution, 4)
+        planes_rgba = planes_rgba.view(n_plane, resolution, resolution, 4)
         
         tex_dir = os.path.join(output_dir, 'texture')
         os.makedirs(tex_dir, exist_ok=True)
-        for i in range(plane_num):
+        for i in range(n_plane):
             rgba = planes_rgba[i]
             img = tensor2Image(rgba)
             name = os.path.join(tex_dir, '{:0>5}.png'.format(i))

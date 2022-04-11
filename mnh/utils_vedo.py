@@ -106,8 +106,8 @@ def visualize_geometry(
     xyz = orthonormal_basis_from_xy(model.xy.detach()).detach().cpu().numpy()
     wh = model.wh.detach().cpu().numpy()
 
-    colors = np.random.rand(model.plane_num, 3)
-    for i in range(model.plane_num):
+    colors = np.random.rand(model.n_plane, 3)
+    for i in range(model.n_plane):
         c = center[i]
         x, y = xyz[i,:,0], xyz[i,:,1]
         x_s, y_s = x*(wh[i, 0]/2), y*(wh[i, 1]/2)

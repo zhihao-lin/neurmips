@@ -6,8 +6,8 @@ from omegaconf import DictConfig, OmegaConf
 import hydra
 import pickle
 from mnh.dataset_replica import ReplicaDataset
-from mnh.dataset_TanksAndTemples import TanksAndTemplesDataset
-from mnh.model_mnh import *
+from mnh.dataset_tat import TanksAndTemplesDataset
+from mnh.model_teacher import *
 from mnh.stats import StatsLogger, WandbLogger
 from mnh.utils import *
 from teacher_forward import *
@@ -39,7 +39,7 @@ def main(cfg: DictConfig):
     test_path  = os.path.join(CURRENT_DIR, cfg.data.path, 'test')
     train_dataset, valid_dataset = None, None
     if 'replica' in cfg.data.path:
-        train_dataset = ReplicaDataset(folder=train_path, read_points=True, sample_points=cfg.data.batch_points)
+        train_dataset = ReplicaDataset(folder=train_path, read_points=True, batch_points=cfg.data.batch_points)
         valid_dataset = ReplicaDataset(folder=valid_path)
     elif 'Tanks' in cfg.data.path or 'BlendedMVS' in cfg.data.path:
         train_dataset = TanksAndTemplesDataset(

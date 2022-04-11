@@ -109,7 +109,7 @@ def camera_view_trajectory(distance:float, frame_unit:int, dim:int):
 
 def main():
     from mnh.dataset_replica import ReplicaDataset, dataset_to_depthpoints
-    from mnh.dataset_TanksAndTemples import TanksAndTemplesDataset
+    from mnh.dataset_tat import TanksAndTemplesDataset
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-data')
@@ -171,7 +171,7 @@ def main():
         scene_center = args.center
         scene_up     = (0, 0, -1)
         folder = args.folder
-        dataset = ReplicaDataset(args.data, read_points=True, sample_points=10000)
+        dataset = ReplicaDataset(args.data, read_points=True, batch_points=10000)
         dist_x, dist_y, dist_z = args.dist
         R, T = generate_video_cameras_replica(
             dataset=dataset,  
