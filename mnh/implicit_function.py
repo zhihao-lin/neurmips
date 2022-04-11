@@ -4,7 +4,7 @@ from typing import List
 import torch
 from pytorch3d.renderer import RayBundle, ray_bundle_to_ray_points
 
-from .nerf.harmonic_embedding import HarmonicEmbedding
+from .harmonic_embedding import HarmonicEmbedding
 
 
 def _xavier_init(linear):

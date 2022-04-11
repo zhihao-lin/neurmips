@@ -8,7 +8,7 @@ import copy
 import vedo
 from mnh.dataset_replica import ReplicaDataset
 from mnh.dataset_TanksAndTemples import TanksAndTemplesDataset
-from mnh.model_plane import visualize
+from mnh.utils_vedo import visualize_geometry
 from mnh.stats import StatsLogger
 from mnh.utils import *
 from mnh.utils_model import freeze_model
@@ -208,7 +208,7 @@ def main(cfg: DictConfig):
         else:
             img_path = os.path.join(output_dir, '{}-geometry-{}.png'.format(cfg.name, cfg.test.vis.id))
         train_points = dataset_to_depthpoints(train_dataset)
-        visualize(
+        visualize_geometry(
             train_points,
             model.plane_geo,
             r=cfg.test.vis.r,

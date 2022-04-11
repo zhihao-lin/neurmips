@@ -1,13 +1,11 @@
 from typing import Tuple
 import math
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from .utils_camera import *
 from .utils_model import *
 from .plane_geometry import PlaneGeometry
-from .nerf.harmonic_embedding import HarmonicEmbedding
+from .harmonic_embedding import HarmonicEmbedding
 from .implicit_function import NeuralRadianceField
 from .utils import *
 
@@ -26,134 +24,6 @@ def oscillate_ndc_grid(ndc_grid):
     ndc_grid[:,:,0] += noise_w
     ndc_grid[:,:,1] += noise_h
     return ndc_grid
-
-def oscillated_points_along_rays(
-    camera,
-    xy_depth,
-    ray_interval,
-):  
-    '''
-    Args
-        xy_depth: (..., 3)
-    Return
-        world points along rays oscillated within interval
-        uniform distribution
-    '''
-    depths = xy_depth[..., -1]
-    depth_upper = depths + ray_interval
-    depth_lower = depths - ray_interval
-    depth_upper = torch.clamp(depth_upper, min=1)
-    depth_lower = torch.clamp(depth_lower, min=1)
-    sample_weight = torch.rand_like(depths)
-    depth_sampled = (1-sample_weight) * depth_lower + sample_weight * depth_upper
-
-    xy_depth = torch.cat([xy_depth[...,:2], depth_sampled.unsqueeze(-1)], dim=-1)
-    world_points_oscillated = unproject_points(camera, xy_depth)
-    return world_points_oscillated
-
-class Model_pixel(nn.Module):
-    def __init__(
-        self,
-        plane_num: int, 
-        plane_res: Tuple[int], # resolution of explicit pixels
-        image_size: Tuple[int],
-        anti_aliasing=False,
-        init_lrf_neighbors:int=50,
-        init_wh:float=1.0,
-        init_points:int=None
-    ):
-        super().__init__()
-        self.plane_num = plane_num
-        self.image_size = image_size
-        self.plane_geo = PlaneGeometry(plane_num)
-        res_h, res_w = plane_res
-        self.plane_content = nn.Parameter(torch.FloatTensor(plane_num, 1+3, res_h, res_w))
-        self.plane_content.data.uniform_(-1, 1)
-        self.anti_aliasing = anti_aliasing
-        self.init = {
-            'lrf_neighbors': init_lrf_neighbors,
-            'wh': init_wh,
-            'points': init_points
-        }
-
-    def initialize_geometry(self, points):
-        sample_num = self.init['points']
-        if sample_num != None and sample_num < points.size(0):
-            sample_idx = torch.randperm(sample_num)
-            points = points[sample_num]
-
-        self.plane_geo.initialize(
-            points,
-            self.init['lrf_neighbors'],
-            self.init['wh']
-        )
-
-    def compute_geometry_loss(self, points):
-        return self.plane_geo(points)
-
-    def forward(self, camera):
-        '''
-        Return:
-            depth maps: image_size
-        '''
-        device = camera.device
-        ndc_grid = get_ndc_grid(self.image_size).to(device)
-        if self.training and self.anti_aliasing:
-            ndc_grid = oscillate_ndc_grid(ndc_grid)
-        ndc_points = ndc_grid.view(-1, 3) #(img_h*img_w=sample_n, 3)
-        points_depth = get_depth_on_planes(
-            self.plane_geo.basis(),
-            self.plane_geo.position(),
-            camera,
-            ndc_points    
-        ) # (plane_n, sample_n)
-        xy_depth = ndc_points[None].repeat(self.plane_num, 1, 1)
-        xy_depth[..., -1] = points_depth 
-        
-        # transform
-        world_points  = unproject_points(camera, xy_depth)
-        world2planes = get_transform_matrix(
-            self.plane_geo.basis(),
-            self.plane_geo.position()
-        ) # (plane_n, 4, 4)
-        plane_points = rotate_translate(world_points, world2planes)
-        plane_points = plane_points[...,:-1] # (plane_n, sample_n, 2)
-
-        # sample values on planes
-        points_content, in_planes = grid_sample_planes(
-            sample_points=plane_points, 
-            planes_wh=self.plane_geo.size(),
-            planes_content=self.plane_content,
-            mode='bilinear' #bilinear/nearest
-        ) # (plane_n, sample_n, 4), (plane_n, sample_n)
-
-        points_content[in_planes == True]  = torch.sigmoid(points_content[in_planes])
-        points_content[in_planes == False] = 0
-
-        # compose: for each sample(pixel), calculate expected depth
-        depth_sorted, sort_idx = torch.sort(points_depth, dim=0, descending=False) # ascending
-        sample_n = points_content.size(1)
-        content_sorted = points_content[sort_idx, torch.arange(sample_n)[None]]
-        alpha_sorted, color_sorted = content_sorted[:,:,0], content_sorted[:,:,1:]
-        alpha_comp = torch.cumprod(1-alpha_sorted, dim=0)
-        alpha_comp = torch.cat([torch.ones(1, sample_n).to(device), alpha_comp], dim=0)[:-1,:] # cumulative product of (1 - alpha)
-        alpha_weight = alpha_sorted * alpha_comp #(plane_n, sample_n)
-
-        depth_expected = torch.sum(depth_sorted * alpha_weight, dim=0)
-        depth_img = depth_expected.view(*self.image_size)   
-        color_composite = torch.sum(color_sorted * alpha_weight.unsqueeze(-1), dim=0) #(sample, 3)
-        color_img = color_composite.view(*self.image_size, 3)
-
-        output = {
-            'color': color_img,
-            'depth': depth_img,
-            'alpha': alpha_weight,
-            'points_depth': points_depth, #(p, h*w),
-            'in_planes': in_planes, #(p, h*w),
-            'sort_idx': sort_idx #(p, h*w)
-        }
-        return output
-
 class Model_rf(nn.Module):
     def __init__(
         self,

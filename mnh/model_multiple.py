@@ -7,7 +7,6 @@ import torch.nn.functional as F
 from .utils_camera import *
 from .utils_model import *
 from .plane_geometry import PlaneGeometry
-from .implicit_function import NeuralRadianceField
 from .implicit_experts import NerfExperts
 from .model_mnh import oscillate_ndc_grid
 from .utils import *

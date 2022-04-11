@@ -1,7 +1,7 @@
 import math 
 import torch 
 import torch.nn as nn 
-from .model_plane import farthest_point_sample, get_points_lrf, orthonormal_basis_from_xy, orthonormal_basis_from_yz
+import torch.nn.functional as F
 
 class PlaneGeometry(nn.Module):
     def __init__(
@@ -241,31 +241,98 @@ class PlaneGeometry(nn.Module):
         }
         return output
 
-def test():
-    import vedo 
-    from .model_plane import visualize
+def farthest_point_sample(
+    points,
+    sample_n: int
+):
+    '''
+    Input:
+        points: (point_n, dim)
+    Return:
+        idx: (sample_n)
+        points_sample: (sample_n, dim)
+    '''
+    idx = 0
+    sample_set= [idx]
+    dist2set = torch.tensor([]).to(points.device)
+    for i in range(sample_n - 1):
+        dist = points - points[idx]
+        dist = torch.sum(dist**2, dim=1)[:, None]
+        dist2set = torch.cat([dist2set, dist], dim=1)
+        min_dist, _ = torch.min(dist2set, dim=1) #(point_n,)
+        _, max_id = torch.max(min_dist, dim=0)
+        idx = max_id.item()
+        sample_set.append(idx) 
 
+    points_sample = points[sample_set]
+    sample_set = torch.LongTensor(sample_set)
+    return sample_set, points_sample
+
+def get_points_lrf(
+    points,
+    neighbor_num:int,
+    indices,
+    chunk_size:int=200
+):
+    '''
+    Input:
+        points: (point_n, 3)
+        indices: (sample_n,) index of partial points -> reduce computation
+    Output:
+        Local reference frame at each point computed by PCA
+        lrf: (point_n, 3, 3) basis are aranged in columns
+    '''
+    samples = points[indices] #(sample_n, 3)
+    dist = samples.unsqueeze(1) - points.unsqueeze(0) #(s, p, 3)
+    dist = torch.sum(dist**2, dim=-1) #(s, p)
+    dist_n, neighbor_idx = torch.topk(dist, k=neighbor_num, dim=-1, largest=False)
+    neighbors = points[neighbor_idx].cpu() #(s, n, 3)
+    lrf_list = []
+    sample_n = samples.size(0)
+    chunk_n = math.ceil(sample_n/chunk_size)
+    for i in range(chunk_n):
+        start = i * chunk_size 
+        end = min((i+1)*chunk_size, sample_n)
+        U, S, V_t = torch.pca_lowrank(neighbors[start:end])
+        lrf_list.append(V_t)
+        # U:(s, n, n), S:(s, min(n,3)), V_t:(s, 3, 3)
+    lrf = torch.cat(lrf_list, dim=0).to(points.device)
+    return lrf
+
+def orthonormal_basis_from_xy(xy):
+    '''
+    compute orthonormal basis from xy vector: (n, 3, 2)
+    '''
+    x, y = xy[:,:,0], xy[:,:,1]
+    z = torch.cross(x, y, dim=-1)
+    y = torch.cross(z, x, dim=-1)
+    x = F.normalize(x, dim=-1)
+    y = F.normalize(y, dim=-1)
+    z = F.normalize(z, dim=-1)
+    xyz = torch.stack([x,y,z], dim=-1)
+    return xyz
+
+def orthonormal_basis_from_yz(yz):
+    '''
+    compute orthonormal basis from yz vector: (n, 3, 2)
+    '''
+    y, z = yz[:,:,0], yz[:,:,1]
+    x = torch.cross(y, z, dim=-1)
+    y = torch.cross(z, x, dim=-1)
+    x = F.normalize(x, dim=-1)
+    y = F.normalize(y, dim=-1)
+    z = F.normalize(z, dim=-1)
+    xyz = torch.stack([x,y,z], dim=-1)
+    return xyz
+
+def test(): 
+    from .utils_vedo import visualize_geometry
     points = torch.randn(1000, 3)
     model = PlaneGeometry(10)
     model.initialize(points, 20)
     planes_points, planes_idx = model.sample_planes_points(2000)
     
-    visualize(planes_points, model)
-
-def test2():
-    points = torch.randn(1000, 3)
-    model = PlaneGeometry(2)
-    model.center[:] = torch.tensor([[0, 0, 0], [0, 0, 1]])
-    model.xy[:] = torch.eye(3)[:,:2]
-    model.wh[:] = torch.tensor([3, 2])
-    vert = model.planes_vertices()
-    print(vert)
-
-def test3():
-    points = torch.rand(1000, 3)
-    model = PlaneGeometry(100)
-    model.random_init(points, wh=1.0)
-    print(model.center[:10])
+    visualize_geometry(planes_points, model)
 
 if __name__ == '__main__':
-    test3()
+    test()

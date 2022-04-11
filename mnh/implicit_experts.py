@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn 
 import torch.nn.functional as F
 from .utils import Timer
-from .nerf.harmonic_embedding import HarmonicEmbedding
+from .harmonic_embedding import HarmonicEmbedding
 
 def _xavier_init(param):
     """
