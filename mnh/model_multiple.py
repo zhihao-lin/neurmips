@@ -40,15 +40,6 @@ class Model_multiple(nn.Module):
         self.image_size = image_size
         self.ndc_grid = get_ndc_grid(image_size)
 
-        # self.plane_radiance_field = nn.ModuleList([
-        #     NeuralRadianceField(
-        #         n_harmonic_functions_pos,
-        #         n_harmonic_functions_dir,
-        #         n_hidden_neurons_pos,
-        #         n_hidden_neurons_dir,
-        #         n_layers,
-        #     ) for i in range(plane_num)
-        # ])
         self.plane_radiance_field = NerfExperts(
             n_harmonic_functions_pos,
             n_harmonic_functions_dir,
@@ -284,6 +275,8 @@ class Model_multiple(nn.Module):
         contrib = alpha_weight > self.filter_bar
         hit = hit[sort_idx] #(plane_n, point_n)
         hit = torch.logical_and(hit, contrib)
+        if hit.any() == False:
+            return self.no_hit_output(ndc_points)
         
         world_points = world_points[sort_idx] #(plane_n, point_n, 3)
         points = world_points[hit]
