@@ -16,9 +16,9 @@ import teacher_forward
 from experts_forward import *
 
 CURRENT_DIR = os.path.realpath('.')
-CONFIG_DIR = os.path.join(CURRENT_DIR, 'configs/experts')
+CONFIG_DIR = os.path.join(CURRENT_DIR, 'configs')
 TEST_CONFIG = 'test'
-CHECKPOINT_DIR = os.path.join(CURRENT_DIR, 'checkpoints/experts')
+CHECKPOINT_DIR = os.path.join(CURRENT_DIR, 'checkpoints')
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 DATA_DIR = os.path.join(CURRENT_DIR, 'data')
 
@@ -79,19 +79,19 @@ def main(cfg: DictConfig):
     optimizer_state = None   
     start_epoch = 0 
 
-    checkpoint_path = os.path.join(CURRENT_DIR, 'checkpoints/teacher', cfg.checkpoint.teacher)
-    pretrained_teacher = os.path.isfile(checkpoint_path)
+    checkpoint_teacher = os.path.join(CHECKPOINT_DIR, cfg.checkpoint.teacher)
+    pretrained_teacher = os.path.isfile(checkpoint_teacher)
     if pretrained_teacher: 
-        print('Load teacher from checkpoint: {}'.format(checkpoint_path))
-        loaded_data = torch.load(checkpoint_path, map_location=device)
+        print('Load teacher from checkpoint: {}'.format(checkpoint_teacher))
+        loaded_data = torch.load(checkpoint_teacher, map_location=device)
         teacher.load_state_dict(loaded_data['model'])
     else:
         print('WARNING: no pretrained weight for teacher network')
     
-    checkpoint_path = os.path.join(CHECKPOINT_DIR, cfg.checkpoint.distill)
-    if cfg.train.resume and os.path.isfile(checkpoint_path):
-        print('Resume from checkpoint: {}'.format(checkpoint_path))
-        loaded_data = torch.load(checkpoint_path, map_location=device)
+    checkpoint_experts = os.path.join(CHECKPOINT_DIR, cfg.checkpoint.experts)
+    if cfg.train.resume and os.path.isfile(checkpoint_experts):
+        print('Resume training from checkpoint: {}'.format(checkpoint_experts))
+        loaded_data = torch.load(checkpoint_experts, map_location=device)
         run_id = loaded_data['run_id']
         model.load_state_dict(loaded_data['model'])
         stats_logger = pickle.loads(loaded_data['stats'])
@@ -109,16 +109,6 @@ def main(cfg: DictConfig):
                 lrf_neighbors=cfg.model.init.lrf_neighbors,
                 wh=cfg.model.init.wh,
             )
-
-            # model.plane_geo.random_init(points, wh=cfg.model.init.wh)
-            
-            # model.plane_geo.initialize_with_box(
-            #     points, 
-            #     lrf_neighbors=cfg.model.init.lrf_neighbors,
-            #     wh=cfg.model.init.wh,
-            #     box_factor=cfg.model.init.box_factor, 
-            #     random_rate=cfg.model.init.random_rate,
-            # )
             del points
 
     if cfg.train.freeze_geometry:
@@ -158,17 +148,18 @@ def main(cfg: DictConfig):
         project='2021-mnh-distill'
     )
     
-    img_folder = os.path.join(CURRENT_DIR, 'output_images/experts', cfg.name, 'output')
+    img_folder = os.path.join(CURRENT_DIR, 'output_images', cfg.name, 'experts', 'output')
     os.makedirs(img_folder, exist_ok=True)
     print('[Traing: Geometry + Transparency + Texture] Start ...')
 
-    for epoch in range(start_epoch, cfg.train.epoch):
+    epoch_total = cfg.train.epoch.dsitill + cfg.train.epoch.finetune
+    for epoch in range(start_epoch, epoch_total):
         model.train()
         stats_logger.new_epoch()
 
         for i, data in enumerate(train_loader):
             data = data[0]
-            if epoch < cfg.train.epoch_teach:
+            if epoch < cfg.train.epoch.distill:
                 train_stats = learn_from_teacher(
                     data, 
                     model, 
@@ -197,7 +188,7 @@ def main(cfg: DictConfig):
         lr_scheduler.step()
 
         # Checkpoint
-        if (epoch+1) % cfg.train.checkpoint_epoch == 0:
+        if (epoch+1) % cfg.train.epoch.checkpoint == 0:
             print('store checkpoints ...')
             checkpoint = {
                 'run_id': wandb_logger.get_run_id(),
@@ -205,10 +196,10 @@ def main(cfg: DictConfig):
                 'optimizer': optimizer.state_dict(),
                 'stats': pickle.dumps(stats_logger)
             }
-            torch.save(checkpoint, checkpoint_path)
+            torch.save(checkpoint, checkpoint_experts)
 
         # validation
-        if (epoch+1) % cfg.train.validation_epoch == 0:
+        if (epoch+1) % cfg.train.epoch.validation == 0:
             model.eval()
             for i, data in enumerate(valid_loader):
                 data = data[0]

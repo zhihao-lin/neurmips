@@ -13,9 +13,9 @@ from mnh.utils import *
 from teacher_forward import *
 
 CURRENT_DIR = os.path.realpath('.')
-CONFIG_DIR = os.path.join(CURRENT_DIR, 'configs/teacher')
+CONFIG_DIR = os.path.join(CURRENT_DIR, 'configs')
 TEST_CONFIG = 'test'
-CHECKPOINT_DIR = os.path.join(CURRENT_DIR, 'checkpoints/teacher')
+CHECKPOINT_DIR = os.path.join(CURRENT_DIR, 'checkpoints')
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 DATA_DIR = os.path.join(CURRENT_DIR, 'data')
 
@@ -39,7 +39,7 @@ def main(cfg: DictConfig):
     test_path  = os.path.join(CURRENT_DIR, cfg.data.path, 'test')
     train_dataset, valid_dataset = None, None
     if 'replica' in cfg.data.path:
-        train_dataset = ReplicaDataset(folder=train_path, read_points=True, sample_points=cfg.data.sample_points)
+        train_dataset = ReplicaDataset(folder=train_path, read_points=True, sample_points=cfg.data.batch_points)
         valid_dataset = ReplicaDataset(folder=valid_path)
     elif 'Tanks' in cfg.data.path or 'BlendedMVS' in cfg.data.path:
         train_dataset = TanksAndTemplesDataset(
@@ -74,12 +74,10 @@ def main(cfg: DictConfig):
     optimizer_state = None   
     start_epoch = 0 
 
-    checkpoint_default = '{}.pth'.format(cfg.name)
-    checkpoint_name = checkpoint_default if cfg.checkpoint == '' else cfg.checkpoint
-    checkpoint_path = os.path.join(CHECKPOINT_DIR, checkpoint_name)
+    checkpoint_path = os.path.join(CHECKPOINT_DIR, cfg.checkpoint.teacher)
     
     if cfg.train.resume and os.path.isfile(checkpoint_path):
-        print('Resume from checkpoint: {}'.format(checkpoint_name))
+        print('Resume from checkpoint: {}'.format(checkpoint_path))
         loaded_data = torch.load(checkpoint_path, map_location=device)
         run_id = loaded_data['run_id']
         model.load_state_dict(loaded_data['model'])
@@ -141,10 +139,10 @@ def main(cfg: DictConfig):
         project='2021-mnh-fit-color'
     )
     
-    img_folder = os.path.join(CURRENT_DIR, 'output_images/teacher', cfg.name, 'output')
+    img_folder = os.path.join(CURRENT_DIR, 'output_images', cfg.name, 'teacher', 'output')
     os.makedirs(img_folder, exist_ok=True)
     print('[Traing: Geometry + Transparency + Texture] Start ...')
-    for epoch in range(start_epoch, cfg.train.epoch):
+    for epoch in range(start_epoch, cfg.train.epoch.teacher):
         model.train()
         stats_logger.new_epoch()
 
@@ -169,7 +167,7 @@ def main(cfg: DictConfig):
         lr_scheduler.step()
 
         # Checkpoint
-        if (epoch+1) % cfg.train.checkpoint_epoch == 0:
+        if (epoch+1) % cfg.train.epoch.checkpoint == 0:
             print('store checkpoints ...')
             checkpoint = {
                 'run_id': wandb_logger.get_run_id(),
@@ -180,7 +178,7 @@ def main(cfg: DictConfig):
             torch.save(checkpoint, checkpoint_path)
 
         # validation
-        if (epoch+1) % cfg.train.validation_epoch == 0:
+        if (epoch+1) % cfg.train.epoch.validation == 0:
             model.eval()
             for i, data in enumerate(valid_loader):
                 data = data[0]

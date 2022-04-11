@@ -16,9 +16,9 @@ import teacher_forward
 from experts_forward import *
 
 CURRENT_DIR = os.path.realpath('.')
-CONFIG_DIR = os.path.join(CURRENT_DIR, 'configs/experts')
+CONFIG_DIR = os.path.join(CURRENT_DIR, 'configs')
 TEST_CONFIG = 'test'
-CHECKPOINT_DIR = os.path.join(CURRENT_DIR, 'checkpoints/experts')
+CHECKPOINT_DIR = os.path.join(CURRENT_DIR, 'checkpoints')
 DATA_DIR = os.path.join(CURRENT_DIR, 'data')
 
 
@@ -77,19 +77,19 @@ def main(cfg: DictConfig):
 
     # load checkpoints
     stats_logger = None
-    checkpoint_path = os.path.join(CURRENT_DIR, 'checkpoints/teacher', cfg.checkpoint.teacher)
-    pretrained_teacher = os.path.isfile(checkpoint_path)
+    checkpoint_teacher = os.path.join(CHECKPOINT_DIR, cfg.checkpoint.teacher)
+    pretrained_teacher = os.path.isfile(checkpoint_teacher)
     if pretrained_teacher: 
-        print('Load teacher from checkpoint: {}'.format(checkpoint_path))
-        loaded_data = torch.load(checkpoint_path, map_location=device)
+        print('Load teacher from checkpoint: {}'.format(checkpoint_teacher))
+        loaded_data = torch.load(checkpoint_teacher, map_location=device)
         teacher.load_state_dict(loaded_data['model'])
     else:
         print('WARNING: no pretrained weight for teacher network')
     
-    checkpoint_path = os.path.join(CHECKPOINT_DIR, cfg.checkpoint.distill)
-    if cfg.train.resume and os.path.isfile(checkpoint_path):
-        print('Resume from checkpoint: {}'.format(checkpoint_path))
-        loaded_data = torch.load(checkpoint_path, map_location=device)
+    checkpoint_experts = os.path.join(CHECKPOINT_DIR, cfg.checkpoint.experts)
+    if cfg.train.resume and os.path.isfile(checkpoint_experts):
+        print('Resume training from checkpoint: {}'.format(checkpoint_experts))
+        loaded_data = torch.load(checkpoint_experts, map_location=device)
         model.load_state_dict(loaded_data['model'])
     else:
         if pretrained_teacher:
@@ -109,9 +109,9 @@ def main(cfg: DictConfig):
         torch.set_default_dtype(torch.float16)
         model = model.half()
         model.ndc_grid = model.ndc_grid.half()
-    if cfg.model.bake == True:
+    if cfg.model.accelerate.bake == True:
         model.bake_planes_alpha()
-    output_dir = os.path.join(CURRENT_DIR, 'output_images/experts', cfg.name)
+    output_dir = os.path.join(CURRENT_DIR, 'output_images', cfg.name, 'experts')
     os.makedirs(output_dir, exist_ok=True)
     
     print('Test [{}] ...'.format(cfg.test.mode))

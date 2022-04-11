@@ -16,9 +16,9 @@ from mnh.utils_video import load_video_cameras
 from teacher_forward import *
 
 CURRENT_DIR = os.path.realpath('.')
-CONFIG_DIR = os.path.join(CURRENT_DIR, 'configs/teacher')
+CONFIG_DIR = os.path.join(CURRENT_DIR, 'configs')
 TEST_CONFIG = 'test'
-CHECKPOINT_DIR = os.path.join(CURRENT_DIR, 'checkpoints/teacher')
+CHECKPOINT_DIR = os.path.join(CURRENT_DIR, 'checkpoints')
 DATA_DIR = os.path.join(CURRENT_DIR, 'data')
 
 
@@ -42,7 +42,7 @@ def main(cfg: DictConfig):
     test_path  = os.path.join(CURRENT_DIR, cfg.data.path, 'test')
     train_dataset, valid_dataset = None, None
     if 'replica' in cfg.data.path:
-        train_dataset = ReplicaDataset(folder=train_path, read_points=True, sample_points=cfg.data.sample_points)
+        train_dataset = ReplicaDataset(folder=train_path, read_points=True, sample_points=cfg.data.batch_points)
         valid_dataset = ReplicaDataset(folder=valid_path)
     elif 'Tanks' in cfg.data.path or 'BlendedMVS' in cfg.data.path:
         train_dataset = TanksAndTemplesDataset(
@@ -74,11 +74,9 @@ def main(cfg: DictConfig):
     model.eval()
 
     # load checkpoints
-    checkpoint_default = '{}.pth'.format(cfg.name)
-    checkpoint_name = checkpoint_default if cfg.checkpoint == '' else cfg.checkpoint
-    checkpoint_path = os.path.join(CHECKPOINT_DIR, checkpoint_name)
+    checkpoint_path = os.path.join(CHECKPOINT_DIR, cfg.checkpoint.teacher)
     if os.path.isfile(checkpoint_path):
-        print('Load from checkpoint: {}'.format(checkpoint_name))
+        print('Load from checkpoint: {}'.format(checkpoint_path))
         loaded_data = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(loaded_data['model'])
         # used after finetuning
@@ -89,18 +87,20 @@ def main(cfg: DictConfig):
         print('[Init] initialize plane geometry ...')
         points = train_dataset.dense_points.to(device)
         print('#points= {}'.format(points.size(0)))
-        # model.plane_geo.initialize_with_box(
-        #     points, 
-        #     lrf_neighbors=cfg.model.init.lrf_neighbors,
-        #     wh=cfg.model.init.wh,
-        #     box_factor=cfg.model.init.box_factor, 
-        #     random_rate=cfg.model.init.random_rate,
-        # )
-        model.plane_geo.initialize(
-            points,
-            lrf_neighbors=cfg.model.init.lrf_neighbors,
-            wh=cfg.model.init.wh,
-        )
+        if 'replica' in cfg.data.path:
+            model.plane_geo.initialize_with_box(
+                points, 
+                lrf_neighbors=cfg.model.init.lrf_neighbors,
+                wh=cfg.model.init.wh,
+                box_factor=cfg.model.init.box_factor, 
+                random_rate=cfg.model.init.random_rate,
+            )
+        else:
+            model.plane_geo.initialize(
+                points,
+                lrf_neighbors=cfg.model.init.lrf_neighbors,
+                wh=cfg.model.init.wh,
+            )
         del points 
         torch.cuda.empty_cache()
 
@@ -108,9 +108,9 @@ def main(cfg: DictConfig):
         torch.set_default_dtype(torch.float16)
         model = model.half()
         model.ndc_grid = model.ndc_grid.half()
-    if cfg.model.bake == True:
+    if cfg.model.accelerate.bake == True:
         model.bake_planes_alpha()
-    output_dir = os.path.join(CURRENT_DIR, 'output_images/teacher', cfg.name)
+    output_dir = os.path.join(CURRENT_DIR, 'output_images', cfg.name, 'teacher')
     os.makedirs(output_dir, exist_ok=True)
     
     print('Test [{}] ...'.format(cfg.test.mode))
@@ -239,7 +239,7 @@ def main(cfg: DictConfig):
         
         model.eval()
         model.bake_planes_alpha(200)
-        for i in range(cfg.model.plane_num):
+        for i in range(cfg.model.n_plane):
             alpha = model.planes_alpha[i]
             img = tensor2Image(alpha)
             path = os.path.join(alpha_folder, "{}-alpha-{:0>5d}.png".format(cfg.name, i))
@@ -286,7 +286,7 @@ def main(cfg: DictConfig):
         folder = os.path.join(output_dir, 'assign')
         os.makedirs(folder, exist_ok=True)
 
-        colors = torch.rand(cfg.model.plane_num, 3).to(device)
+        colors = torch.rand(cfg.model.n_plane, 3).to(device)
         for split, dataset in datasets.items():
             for i in range(len(dataset)):
                 data = dataset[i]
@@ -369,7 +369,7 @@ def main(cfg: DictConfig):
         np.save(os.path.join(geo_dir, 'world2plane.npy'), world2plane)
 
         planes_verts = []
-        plane_num = cfg.model.plane_num 
+        plane_num = cfg.model.n_plane
         for i in range(plane_num):
             c = center[i]
             x, y = basis[i,:,0], basis[i,:,1]
@@ -383,12 +383,12 @@ def main(cfg: DictConfig):
         print('- Save texture(RGBA) ...')
         cam_ref = datasets['train'][0]['camera'].to(device)
         plane_geo = model.plane_geo
-        resolution = cfg.model.bake_res
-        plane_num = cfg.model.plane_num
+        resolution = cfg.model.accelerate.bake_res
+        plane_num = cfg.model.n_plane
 
         planes_points = plane_geo.get_planes_points(resolution) #(plane_n, res, res, 3)
         planes_points = planes_points.view(-1, 3)
-        sample_num = cfg.model.n_bake_sample
+        sample_num = cfg.model.accelerate.n_bake_sample
         points_total = (resolution ** 2) * plane_num
         chunk_num = math.ceil(points_total / sample_num)
         planes_rgba = []
@@ -411,29 +411,6 @@ def main(cfg: DictConfig):
             img = tensor2Image(rgba)
             name = os.path.join(tex_dir, '{:0>5}.png'.format(i))
             img.save(name)
-
-    if cfg.test.mode == 'video':
-        traj_path = os.path.join(CURRENT_DIR, cfg.video.traj_path)
-        _, cameras = load_video_cameras(traj_path)
-        
-        folder_vdo = os.path.join(output_dir, 'video', cfg.video.name)
-        os.makedirs(folder_vdo, exist_ok=True)
-        
-        model.eval()
-        frame_num = len(cameras)
-        for i in tqdm(range(frame_num)):
-            camera = cameras[i].to(device)
-            with torch.no_grad():
-                out = model(camera)
-            rgb_pred = out['color']
-            img = tensor2Image(rgb_pred)
-            path = os.path.join(folder_vdo, 'frame_{:0>5}.png'.format(i))
-            img.save(path)
-            
-        img_path = os.path.join(folder_vdo, 'frame_%05d.png')
-        vdo_path = os.path.join(folder_vdo, 'video-{}.mp4'.format(cfg.video.name))
-        command = 'ffmpeg -r {} -i {} {}'.format(cfg.video.fps, img_path, vdo_path)
-        os.system(command)
         
 if __name__ == '__main__':
     main()
