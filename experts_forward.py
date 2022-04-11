@@ -8,23 +8,23 @@ from omegaconf import DictConfig
 
 def get_model_from_config(cfg: DictConfig):
     model = Model_multiple(
-        plane_num=cfg.model.plane_num,
+        plane_num=cfg.model.n_plane,
         image_size=cfg.data.image_size,
         # # Radiance field 
-        n_harmonic_functions_pos=cfg.distill.n_harmonic_functions_pos,
-        n_harmonic_functions_dir=cfg.distill.n_harmonic_functions_dir,
-        n_hidden_neurons_pos=cfg.distill.n_hidden_neurons_pos,
-        n_hidden_neurons_dir=cfg.distill.n_hidden_neurons_dir,
-        n_layers=cfg.distill.n_layers,
+        n_harmonic_functions_pos=cfg.model.mlp_experts.n_harmonic_functions_pos,
+        n_harmonic_functions_dir=cfg.model.mlp_experts.n_harmonic_functions_dir,
+        n_hidden_neurons_pos=cfg.model.mlp_experts.n_hidden_neurons_pos,
+        n_hidden_neurons_dir=cfg.model.mlp_experts.n_hidden_neurons_dir,
+        n_layers=cfg.model.mlp_experts.n_layers,
         # train & test
         n_train_sample=cfg.model.n_train_sample,
         n_infer_sample=cfg.model.n_infer_sample,
         anti_aliasing=cfg.model.anti_aliasing,
         premultiply_alpha=cfg.model.premultiply_alpha,
         # accelerate
-        n_bake_sample=cfg.model.n_bake_sample,
-        bake_res=cfg.model.bake_res, 
-        filter_bar=cfg.model.filter_bar,
+        n_bake_sample=cfg.model.accelerate.n_bake_sample,
+        bake_res=cfg.model.accelerate.bake_res, 
+        filter_bar=cfg.model.accelerate.thresh,
         white_bg=cfg.data.white_bg
     )
     return model 
@@ -68,7 +68,6 @@ def forward_pass(
     if training: #training
         optimizer.zero_grad()
         loss =  mse_color * cfg.loss_weight.color
-        # loss += mse_depth * cfg.loss_weight.depth 
         loss += loss_point2plane * cfg.loss_weight.point2plane
         loss.backward()
         optimizer.step()
