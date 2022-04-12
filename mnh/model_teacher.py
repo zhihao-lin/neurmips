@@ -160,7 +160,7 @@ class ModelTeacher(nn.Module):
             'color': color_bg, #(point_n, 3)
             'depth': torch.zeros(point_n, device=device), #(point_n, )
             # 'points': torch.zeros(point_n, 3, device=device), #(point_n, 3)
-            'eval_num': torch.zeros(point_n, device=device), #(point_n, )
+            # 'eval_num': torch.zeros(point_n, device=device), #(point_n, )
         }
         return dummy_output
 
@@ -195,20 +195,20 @@ class ModelTeacher(nn.Module):
         
         rgba = self.predict_points_rgba(camera, world_points, hit)
         depth, sort_idx = self.sort_depth_index(planes_depth)
-        rgba  = rgba[sort_idx]
+        rgba = rgba[sort_idx]
         rgb, alpha = rgba[:,:,:-1], rgba[:,:,-1]
         color, depth = self.alpha_composite(rgb, alpha, depth)
 
         # compute unprojected points with predicted depth
         # points = unproject_points(camera, ndc_points, depth)
         # points = points.squeeze(0).detach()
-        eval_num = torch.sum(hit, dim=0).float() #(sample_n)
+        # eval_num = torch.sum(hit, dim=0).float() #(sample_n)
 
         output = {
             'color': color, #(s, 3)
             'depth': depth, #(s, )
             # 'points': points, #(s, 3)
-            'eval_num': eval_num, #(s,)
+            # 'eval_num': eval_num, #(s,)
         }
         return output
 
@@ -244,13 +244,13 @@ class ModelTeacher(nn.Module):
         # compute unprojected points with predicted depth
         # points = unproject_points(camera, ndc_points, depth)
         # points = points.squeeze(0).detach()
-        eval_num = torch.sum(hit, dim=0).float() #(point_n)
+        # eval_num = torch.sum(hit, dim=0).float() #(point_n)
 
         output = {
             'color': color, #(s, 3)
             'depth': depth, #(s, )
             # 'points': points, #(s, 3)
-            'eval_num': eval_num, #(s,)
+            # 'eval_num': eval_num, #(s,)
         }
         return output
 
@@ -307,7 +307,7 @@ class ModelTeacher(nn.Module):
             'color': [*img_wh, 3],
             'depth': [*img_wh],
             # 'points': [-1, 3],
-            'eval_num': [-1]
+            # 'eval_num': [-1]
         }
         output = {
             key: torch.cat([

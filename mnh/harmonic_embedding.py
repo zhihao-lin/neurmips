@@ -71,10 +71,3 @@ class HarmonicEmbedding(torch.nn.Module):
         """
         embed = (x[..., None] * self._frequencies).view(*x.shape[:-1], -1)
         return torch.cat((embed.sin(), embed.cos()), dim=-1)
-
-
-if __name__ == '__main__':
-    x = torch.randn(8, 100, 3)
-    he = HarmonicEmbedding(n_harmonic_functions=6)
-    out = he(x)
-    print(out.size())

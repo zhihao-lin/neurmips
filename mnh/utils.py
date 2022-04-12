@@ -12,14 +12,6 @@ from skimage.metrics import structural_similarity as calculate_ssim
 def parameter_number(model: nn.Module):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-# def compute_psnr(gt: torch.Tensor, pred: torch.Tensor):
-#     """
-#     Calculates the Peak-signal-to-noise ratio between tensors `x` and `y`.
-#     """
-#     mse = F.mse_loss(gt, pred)
-#     psnr = 10.0 * torch.log10(gt.max()**2/mse)
-#     return psnr
-
 def compute_psnr(gt, pred):
     mse = torch.mean((gt - pred)**2)
     device = gt.device
@@ -33,29 +25,6 @@ def compute_ssim(gt, pred):
     pred = pred.cpu().numpy()
     ssim = calculate_ssim(pred, gt, data_range=gt.max() - gt.min(), multichannel=True)
     return ssim
-
-def total_variation(
-    images, 
-    norm:str='1'
-):  
-    '''
-    Args
-        images: (n, d, h, w)
-        norm: L1/L2
-    '''
-    dims = len(images.size())
-    dim_h, dim_w = dims - 2, dims - 1
-    d_h = images[...,1:,:] - images[...,:-1,:] #(..., h-1, w)
-    d_h = torch.cat([d_h, torch.zeros_like(d_h)[...,0,:].unsqueeze(dim_h)], dim=dim_h)
-    d_w = images[...,:,1:] - images[...,:,:-1] #(..., h, w-1)
-    d_w = torch.cat([d_w, torch.zeros_like(d_w)[...,:,0].unsqueeze(dim_w)], dim=dim_w)
-    
-    var = 0
-    if str(norm) == '1':
-        var = torch.mean(torch.abs(d_h) + torch.abs(d_w))
-    elif str(norm) == '2':
-        var = torch.mean(d_h**2 + d_w**2)
-    return var
 
 def tensor2Image(
     tensor, 
@@ -107,34 +76,6 @@ def generate_gif(
         duration=duration,
         loop=0
     )
-
-def gaussian_kernel(
-    kernel_size:int,
-    sigma:float
-):
-    shift = (kernel_size - 1) / 2
-    side = torch.arange(kernel_size).float() - shift
-    x, y = torch.meshgrid(side, side) #(k, k)
-    kernel = torch.exp(-(x**2 + y**2)/ (sigma**2))
-    kernel = kernel / torch.sum(kernel)
-    return kernel
-
-def gaussian_blur(
-    image:torch.tensor,
-    kernel_size:int, 
-    sigma:float=1.0
-):  
-    '''
-    Input & output:
-        Image (h, w, dim=3)
-    '''
-    kernel = gaussian_kernel(kernel_size, sigma)
-    kernel = kernel[None, None].to(image.device) #(1, 1, k, k)
-    image = image.permute(2, 0, 1).unsqueeze(1) #(3, 1, h, w)
-    padding = int((kernel_size - 1) / 2)
-    image = F.conv2d(image, kernel, padding=padding) #(3, 1, h, w)
-    image = image.squeeze().permute(1, 2, 0) #(h, w, 3)
-    return image
 
 def list2txt(list, path):
     '''
@@ -196,25 +137,3 @@ class Timer:
     def print_time(self, info, reset=True):
         interval = self.get_time(reset)
         print('{:.5f} | {}'.format(interval, info))
-
-def test_gaussian():
-    img_path = 'tests/paintings/smile.jpg'
-    out_path = 'mnh/gaussian.png'
-    img = Image.open(img_path)
-    img = torch.FloatTensor(np.array(img))
-    img_c = img.clone()
-    img = gaussian_blur(img, 5, 2)
-    print('diff: {}'.format(torch.sum(img - img_c)))
-    img = img.numpy().astype(np.uint8)
-    img = Image.fromarray(img)
-    img.save(out_path)
-
-def test_tv():
-    images = torch.randn(100, 4, 128, 128)
-    tv_l1 = total_variation(images, norm='1')
-    tv_l2 = total_variation(images, norm='2')
-    print('TV-L1: {}'.format(tv_l1))
-    print('TV-L2: {}'.format(tv_l2))
-
-if __name__ == '__main__':
-    test_tv()

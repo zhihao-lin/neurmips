@@ -119,32 +119,3 @@ def visualize_geometry(
     vedo.show(*objs ,axes=1)
     if screenshot_name:
         vedo.io.screenshot(screenshot_name)
-
-def test():
-    from vedo import Mesh, printc, show
-
-    verts = [(50,50,50), (70,40,50), (50,40,80), (80,70,50)]
-    faces = [(0,1,2), (2,1,3), (1,0,3)]
-    # (the first triangle face is formed by vertex 0, 1 and 2)
-
-    # Build the polygonal Mesh object:
-    mesh = Mesh([verts, faces], alpha=0.8)
-    mesh.backColor('violet').lineColor('tomato').lineWidth(2)
-    labs = mesh.labels('id').c('black')
-
-    # retrieve them as numpy arrays
-    printc('points():\n', mesh.points(), c=3)
-    printc('faces(): \n', mesh.faces(),  c=3)
-
-    show(mesh, labs, __doc__, viewup='z', axes=0).close()
-
-def test2():
-    center = np.array([0, 0, 0])
-    rotation = np.eye(3)
-    wh = np.array([2, 3])
-    alpha = np.random.rand(100, 100)
-    plane = get_vedo_alpha_plane(center, rotation, wh, alpha)
-    vedo.show(plane, axes=1)
-
-if __name__ == '__main__':
-    test2()

@@ -233,14 +233,3 @@ class MLPWithInputSkips(torch.nn.Module):
                 y = torch.cat((y, z), dim=-1)
             y = layer(y)
         return y
-
-
-def test():
-    model = NeuralRadianceField()
-    points = torch.randn(100, 3)
-    directions = torch.randn(100, 3)
-    output = model(points ,directions)
-    print(output.size())
-
-if __name__ == '__main__':
-    test()

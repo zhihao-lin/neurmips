@@ -31,17 +31,6 @@ def grid_sample_planes(
     sampled_content = sampled_content.squeeze(2).transpose(1, 2)
     return sampled_content
 
-def test_grid_sample():
-    p_n, s_n = 100, 300
-    img_h, img_w = 64, 64
-    sample_points = torch.randn(p_n, s_n, 2)
-    planes_wh = torch.randn(p_n, 2)
-    planes_content = torch.randn(p_n, 3, img_h, img_w)
-    sampled_content, in_planes = grid_sample_planes(sample_points, planes_wh, planes_content)
-    print(sampled_content.size())
-    print(in_planes.size())
-    print(torch.sum(in_planes))
-
 def check_inside_planes(
     planes_points,
     planes_wh,
@@ -106,6 +95,3 @@ def check_valid_model(name:str, model):
         detect_invalid_values('[{}][{}], param.'.format(name, p_name), param.data)
         if param.grad is not None:
             detect_invalid_values('[{}][{}], grad.'.format(name, p_name), param.grad)
-
-if __name__ == '__main__':
-    test_grid_sample()

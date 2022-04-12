@@ -19,19 +19,16 @@ def main():
     lpips_path = os.path.join(folder, 'lpips.txt')
 
     if not os.path.isfile(psnr_path) or args.rewrite:
-        print(f'Generate : {psnr_path} ...')
         psnr_list = folder_metric(folder, metric_func=compute_psnr, device=device)
         list2txt(psnr_list, psnr_path)
     psnr_list = np.genfromtxt(psnr_path)
     
     if not os.path.isfile(ssim_path) or args.rewrite:
-        print(f'Generate : {ssim_path} ...')
         ssim_list = folder_metric(folder, metric_func=compute_ssim, device=device)
         list2txt(ssim_list, ssim_path)
     ssim_list = np.genfromtxt(ssim_path)
 
     if not os.path.isfile(lpips_path) or args.rewrite:
-        print(f'Generate : {lpips_path} ...')
         lpips_fn = ComputeLPIPS(device)
         lpips_list = folder_metric(folder, metric_func=lpips_fn, device=device)
         list2txt(lpips_list, lpips_path)

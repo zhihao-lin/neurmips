@@ -1,8 +1,6 @@
-import warnings
 import wandb
 import numpy as np
 from .utils import tensor2Image
-
 class Meter:
     def __init__(self):
         self.history = []
@@ -86,7 +84,7 @@ class WandbLogger():
         config: dict, 
         image_size: tuple = None,
         resume_id: str = None,
-        project: str = '2021-mixture-of-neural-homography'
+        project: str = ''
     ):
         if resume_id == None:
             wandb.init(

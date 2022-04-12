@@ -6,8 +6,7 @@ import torch.nn.functional as F
 class PlaneGeometry(nn.Module):
     def __init__(
         self,
-        n_plane:int,
-        learn_size:bool=True
+        n_plane:int
     ):
         super().__init__()
         self.n_plane = n_plane
@@ -15,8 +14,6 @@ class PlaneGeometry(nn.Module):
         self.xy = nn.Parameter(torch.FloatTensor(n_plane, 3, 2))
         # self.yz = nn.Parameter(torch.FloatTensor(n_plane, 3, 2))
         self.wh = nn.Parameter(torch.FloatTensor(n_plane, 2))
-        if learn_size == False:
-            self.wh.requires_grad = False
 
         self.center.data.uniform_(0, 1)
         self.wh.data[:] = 1
@@ -25,24 +22,6 @@ class PlaneGeometry(nn.Module):
         # self.yz.data = eyes[:,:,:2]
 
         self.init_with_box = False # check if the initialization including boxes
-
-    def random_init(self, 
-        points,
-        wh:float
-    ):
-        mean = torch.mean(points, dim=0)
-        corner_max = torch.max(points - mean, dim=0)[0] + mean 
-        corner_min = torch.min(points - mean, dim=0)[0] + mean
-        
-        plane_n = self.n_plane
-        alpha = torch.rand(plane_n, 3, device=points.device)
-        centers = alpha * corner_min.unsqueeze(0) + (1 - alpha) * corner_max.unsqueeze(0)
-        self.center.data = centers
-
-        rand_xy = torch.randn(plane_n, 3, 2, device=points.device)
-        basis = orthonormal_basis_from_xy(rand_xy)
-        self.xy.data = basis[:, :, :2]
-        self.wh.data[:] = wh
 
     def initialize(self, 
         points, 
@@ -116,9 +95,6 @@ class PlaneGeometry(nn.Module):
         self.wh.data[face_n:] = wh
 
         self.init_with_box = True
-        # self.xy[:face_n].requires_grad = False  # disable back-prop update to boxes (not working)
-        # self.wh[:face_n].requires_grad = False
-        # self.center[:face_n].requires_grad = False
 
     def position(self):
         return self.center
@@ -160,7 +136,7 @@ class PlaneGeometry(nn.Module):
 
     def sample_planes_points(self, points_n):
         '''
-        Sample points on planes
+        Sample random points on planes, total number <= points_n
         Return 
             planes_points: (plane_n*sample_n, 3)
             planes_idx: (plane_n*sample_n, )

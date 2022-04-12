@@ -216,8 +216,5 @@ def main():
         R, T = load_camera_RT(folder)
         visualize_points_cameras(points, R, T)
 
-def test():
-    pass 
-
 if __name__ == '__main__':
     main()

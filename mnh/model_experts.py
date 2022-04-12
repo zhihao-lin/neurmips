@@ -1,9 +1,7 @@
 from typing import Tuple
 import math
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from .utils_camera import *
 from .utils_model import *
 from .plane_geometry import PlaneGeometry
@@ -29,7 +27,7 @@ class ModelExperts(nn.Module):
         # accelerate
         n_bake_sample:int,
         bake_res:int,
-        filter_thresh: float,
+        filter_thresh:float,
         white_bg:bool
     ):
         super().__init__()
@@ -126,23 +124,6 @@ class ModelExperts(nn.Module):
         sort_id_1 = torch.arange(point_n)[None].to(sort_id_0.device)
         sort_idx = [sort_id_0, sort_id_1]
         return depth_sorted, sort_idx
-    
-    def predict_points_rgba(self, camera, world_points, hit):
-        '''
-        Return
-            points_rgba: (plane_n, point_n, 4)
-        '''
-        view_dirs = get_normalized_direction(camera, world_points)
-        points_rgba = world_points.new_zeros(*world_points.shape[:2], 4)
-
-        for i in range(self.n_plane):
-            hit_i = hit[i] #(piont_n,)
-            if hit_i.any():
-                pts  = world_points[i, hit_i]
-                dirs = view_dirs[i, hit_i]
-                rgba_i = self.plane_radiance_field[i](pts, dirs)
-                points_rgba[i, hit_i] = rgba_i
-        return points_rgba
 
     def get_planes_indices(self, hit):
         '''
@@ -195,7 +176,7 @@ class ModelExperts(nn.Module):
             'color': color_bg, #(point_n, 3)
             'depth': torch.zeros(point_n, device=device), #(point_n, )
             # 'points': torch.zeros(point_n, 3, device=device), #(point_n, 3)
-            'eval_num': torch.zeros(point_n, device=device), #(point_n, )
+            # 'eval_num': torch.zeros(point_n, device=device), #(point_n, )
         }
         return dummy_output
 
@@ -221,7 +202,7 @@ class ModelExperts(nn.Module):
     ):
         '''
         Args
-            ndc_points: (sample_num, 3)
+            ndc_points: (point_n, 3)
             camera: pytorch3d camera
         '''
         world_points, _, planes_depth, hit = self.ray_plane_intersect(camera, ndc_points)
@@ -243,13 +224,13 @@ class ModelExperts(nn.Module):
         # compute unprojected points with predicted depth
         # points = unproject_points(camera, ndc_points, depth)
         # points = points.squeeze(0).detach()       
-        eval_num = torch.sum(hit, dim=0).float() #(point_n)
+        # eval_num = torch.sum(hit, dim=0).float() #(point_n)
 
         output = {
             'color': color, #(point_3, 3)
             'depth': depth, #(point_3, )
             # 'points': points, #(point_3, 3)
-            'eval_num': eval_num, #(piont_3, )
+            # 'eval_num': eval_num, #(piont_3, )
         }
         return output
 
@@ -259,7 +240,7 @@ class ModelExperts(nn.Module):
     ):
         '''
         Args
-            ndc_points: (sample_num, 3)
+            ndc_points: (point_n, 3)
             camera: pytorch3d camera
         '''
         world_points, planes_points, planes_depth, hit = self.ray_plane_intersect(camera, ndc_points)
@@ -288,12 +269,12 @@ class ModelExperts(nn.Module):
         # rgb = rgba[:,:,:-1] # use sampled alpha
         rgb, alpha = rgba[:,:,:-1], rgba[:,:,-1] # use original alpha
         color, depth = self.alpha_composite(rgb, alpha, depth)
-        eval_num = torch.sum(hit, dim=0).float() #(point_n)
+        # eval_num = torch.sum(hit, dim=0).float() #(point_n)
 
         output = {
             'color': color, #(s, 3)
             'depth': depth, #(s, )
-            'eval_num': eval_num, #(s,)
+            # 'eval_num': eval_num, #(s,)
         }
         return output  
 
@@ -326,7 +307,7 @@ class ModelExperts(nn.Module):
         ndc_points = ndc_points_full[sample_idx] #(n_train_sample, 3)
         output = self.process(camera, ndc_points)
         output['sample_idx'] = sample_idx
-        return output 
+        return output
 
     def forward_full_image(self, camera, ndc_points_full):
         img_pixel_num = ndc_points_full.size(0)
@@ -350,7 +331,7 @@ class ModelExperts(nn.Module):
             'color': [*img_wh, 3],
             'depth': [*img_wh],
             # 'points': [-1, 3],
-            'eval_num': [-1]
+            # 'eval_num': [-1]
         }
         output = {
             key: torch.cat([

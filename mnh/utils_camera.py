@@ -220,9 +220,9 @@ def test_intersect():
 
     t1, intersect1 = ray_plane_intersection(planes_R, planes_center, camera, ndc_points)
     t2 = ray_plane_intersect_mt(planes_vertices, camera, ndc_points)
-    print(t1[:5, :5])
-    print(t2[:5, :5])
     print(torch.dist(t1, t2))
+    diff = t1 - t2
+    print('Diff. Max. = {}'.format(diff.abs().max().item()))
 
 def get_depth_on_planes(
     planes_frame: torch.Tensor,
@@ -377,54 +377,6 @@ def get_normalized_direction(
     normalized = F.normalize(directions, dim=-1)
     normalized = normalized.view(*shape)
     return normalized
-
-def test_unprojection():
-    '''
-    verify the unprojection depth points in plane coordinates
-    the z-dim should be very small -> 0
-    '''
-    from pytorch3d.renderer import PerspectiveCameras, FoVPerspectiveCameras
-    from .utils_rotation import zy_to_rotations 
-    eye = torch.eye(3)[None]
-    plane_R = torch.eye(3)[None]
-    plane_pos = torch.FloatTensor([[0, 0, 10]])
-    cam_R = torch.eye(3)[None]
-    cam_T = torch.FloatTensor([[0, 0, 0]])
-    
-    cam =  FoVPerspectiveCameras(
-        znear=0.1,
-        zfar=1e4,
-        aspect_ratio=1.0,
-        fov=0.69111,
-        degrees=False,
-        R=cam_R,
-        T=cam_T
-    )
-    # cam = PerspectiveCameras(
-    #     focal_length=1.0,
-    #     principal_point=((0.0, 0.0),),
-    #     R=cam_R,
-    #     T=cam_T
-    # )
-
-    image_size = [5, 5]
-    ndc_grid = get_ndc_grid(image_size)
-    ndc_points = ndc_grid.view(-1, 3)
-    depth_points = get_depth_on_planes(
-        plane_R,
-        plane_pos,
-        cam,
-        ndc_points
-    )
-    # print('depth points:', depth_points)
-    xy_depth = ndc_points
-    xy_depth[:, -1] = depth_points
-    # K = cam.get_projection_transform().get_matrix()
-    world_points = cam.unproject_points(xy_depth)
-    world2planes = get_transform_matrix(plane_R, plane_pos)
-    plane_points = transform_points_batch(world_points, world2planes)
-    print('plane z coord:', plane_points[:, :, -1])
-    # project_points = cam.transform_points(world_points)
 
 if __name__ == '__main__':
     test_intersect()
