@@ -5,7 +5,7 @@ from mnh.model_teacher import ModelTeacher
 from mnh.utils_model import *
 from omegaconf import DictConfig
 
-def get_model_from_config(cfg: DictConfig):
+def get_model_from_config(cfg:DictConfig):
     model = ModelTeacher(
         n_plane=cfg.model.n_plane,
         image_size=cfg.data.image_size,
@@ -84,7 +84,7 @@ def forward_pass(
         'time': time
     }
     images = {
-        'depth_pred': depth_pred,#/depth_pred.max(),
+        'depth_pred': depth_pred,
         'color_gt': color_gt,
         'color_pred': color_pred 
     }

@@ -6,7 +6,7 @@ from mnh.utils_model import *
 from mnh.utils_camera import *
 from omegaconf import DictConfig
 
-def get_model_from_config(cfg: DictConfig):
+def get_model_from_config(cfg:DictConfig):
     model = ModelExperts(
         n_plane=cfg.model.n_plane,
         image_size=cfg.data.image_size,
@@ -40,7 +40,6 @@ def forward_pass(
 ):
     camera   = data['camera'].to(device)
     color_gt = data['color'].to(device)
-    # depth_gt = data['depth'].to(device)
     points_dense = data['points'].to(device)
 
     timer = Timer(cuda_sync= not training)
@@ -49,7 +48,6 @@ def forward_pass(
         out = model(camera)
         sample_idx = out['sample_idx']
         color_gt = color_gt.view(-1, 3)[sample_idx]
-        # depth_gt = depth_gt.view(-1)[sample_idx]
     else:
         with torch.no_grad():
             model.eval()
@@ -61,7 +59,6 @@ def forward_pass(
     # points = torch.cat([points_dense, points_pred])
 
     mse_color = F.mse_loss(color_pred, color_gt)
-    # mse_depth = F.mse_loss(depth_pred, depth_gt) 
     loss_geo = model.compute_geometry_loss(points_dense)
     loss_point2plane = loss_geo['loss_point2plane']
 
@@ -76,8 +73,7 @@ def forward_pass(
     ssim = compute_ssim(color_gt, color_pred) if not training else 0
 
     stats = {
-        'mse_color': mse_color.detach().cpu().item(), 
-        # 'mse_depth': mse_depth.detach().cpu().item(),
+        'mse_color': mse_color.detach().cpu().item(),
         # 'mse_point2plane': loss_point2plane.detach().cpu().item(),
         'psnr': psnr,
         'ssim': ssim,

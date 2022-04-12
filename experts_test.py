@@ -5,10 +5,7 @@ import torch.nn.functional as F
 from omegaconf import DictConfig, OmegaConf
 import hydra
 import copy
-import vedo
-from mnh.dataset_replica import ReplicaDataset
-from mnh.dataset_tat import TanksAndTemplesDataset
-from mnh.utils_vedo import visualize_geometry
+from mnh.dataset import load_datasets
 from mnh.stats import StatsLogger
 from mnh.utils import *
 from mnh.utils_model import freeze_model
@@ -17,12 +14,9 @@ from experts_forward import *
 
 CURRENT_DIR = os.path.realpath('.')
 CONFIG_DIR = os.path.join(CURRENT_DIR, 'configs')
-TEST_CONFIG = 'test'
 CHECKPOINT_DIR = os.path.join(CURRENT_DIR, 'checkpoints')
-DATA_DIR = os.path.join(CURRENT_DIR, 'data')
 
-
-@hydra.main(config_path=CONFIG_DIR, config_name=TEST_CONFIG)
+@hydra.main(config_path=CONFIG_DIR)
 def main(cfg: DictConfig):
     # Set random seed for reproduction
     np.random.seed(cfg.seed)
@@ -36,34 +30,7 @@ def main(cfg: DictConfig):
         device = torch.device('cpu')
         
     # set DataLoader objects
-    train_path = os.path.join(CURRENT_DIR, cfg.data.path, 'train')
-    valid_path = os.path.join(CURRENT_DIR, cfg.data.path, 'valid')
-    test_path  = os.path.join(CURRENT_DIR, cfg.data.path, 'test')
-    train_dataset, valid_dataset = None, None
-    if 'replica' in cfg.data.path:
-        train_dataset = ReplicaDataset(folder=train_path, read_points=True, batch_points=cfg.data.batch_points)
-        valid_dataset = ReplicaDataset(folder=valid_path)
-    elif 'Tanks' in cfg.data.path or 'BlendedMVS' in cfg.data.path:
-        train_dataset = TanksAndTemplesDataset(
-            folder=train_path, 
-            read_points=True, 
-            sample_rate=cfg.data.sample_rate,
-            batch_points=cfg.data.batch_points,
-        )
-        valid_dataset = TanksAndTemplesDataset(
-            folder=valid_path,
-        )
-    elif 'Synthetic' in cfg.data.path:
-        train_dataset = TanksAndTemplesDataset(
-            folder=train_path, 
-            read_points=True, 
-            sample_rate=cfg.data.sample_rate,
-            batch_points=cfg.data.batch_points,
-        )
-        valid_dataset = TanksAndTemplesDataset(
-            folder=test_path,
-        )
-
+    train_dataset, valid_dataset = load_datasets(os.path.join(CURRENT_DIR, cfg.data.path), cfg)
     datasets = {
         'train': train_dataset,
         'valid': valid_dataset
@@ -130,12 +97,6 @@ def main(cfg: DictConfig):
         print('- Validation: forward')
         print('- Image inference FPS: {:.3f}'.format(valid_stats['FPS']))
 
-    if cfg.test.mode == 'complexity':
-        from mnh.complexity import calculate_complexity
-        batch_size = 10000
-        net = model.plane_radiance_field[0]
-        calculate_complexity(net, batch_size=batch_size)
-
     if cfg.test.mode == 'evaluate':
         stats_logger= StatsLogger()
         model.eval()
@@ -186,32 +147,6 @@ def main(cfg: DictConfig):
             stats_logger.print_info(split)
             avg_time = stats_logger.stats[split]['time'].get_mean()
             print('FPS: {:.3f}'.format(1 / avg_time))
-    
-    if cfg.test.mode == 'alpha_map':
-        model.bake_planes_alpha()
-        dir_alpha = os.path.join(output_dir, 'alpha_maps')
-        os.makedirs(dir_alpha, exist_ok=True)
-        planes_alpha = model.planes_alpha.squeeze()
-        for i in range(model.n_plane):
-            a = planes_alpha[i]
-            a = tensor2Image(a)
-            a.save(os.path.join(dir_alpha, '{:0>4d}.png').format(i))
-
-    if cfg.test.mode == 'geometry':
-        if cfg.test.vis.id == '':
-            img_path = None
-        else:
-            img_path = os.path.join(output_dir, '{}-geometry-{}.png'.format(cfg.name, cfg.test.vis.id))
-        train_points = dataset_to_depthpoints(train_dataset)
-        visualize_geometry(
-            train_points,
-            model.plane_geo,
-            r=cfg.test.vis.r,
-            c=cfg.test.vis.c,
-            alpha=cfg.test.vis.alpha,
-            screenshot_name=img_path
-        )
-        
                 
 if __name__ == '__main__':
     main()
