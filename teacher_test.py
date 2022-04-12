@@ -3,7 +3,6 @@ import numpy as np
 import torch
 from omegaconf import DictConfig
 import hydra
-import vedo
 from mnh.dataset_replica import dataset_to_depthpoints
 from mnh.dataset import load_datasets
 from mnh.utils_vedo import visualize_geometry
