@@ -29,8 +29,16 @@ Download pretrained model weights for evaluation without training from scratch:
 bash run/checkpoints.sh
 ```
 ## Usage 
-- Training 
-- Distillation
-- CUDA acceleration
+We provide hyperparameters for each experiment in config file `configs/*.yaml`, which is used for training and evaluation. For example, `replica-kitchen.yaml` corresponds to *Replica* dataset *Kitchen* scene, and `tat-barn.yaml` corresponds to *Tanks&Temple* dataset *Barn* scene.
+
+### Training 
+Train the teacher and experts model by running:
+```
+bash run/train.sh [config]
+# example
+bash run/train.sh replica-kitchen
+```
+### Evaluation
+### CUDA Acceleration
 
 BibTex
