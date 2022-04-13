@@ -3,11 +3,11 @@ This is the official repo for PyTorch implementation of paper "NeurMips: Neural 
 ### [Paper]() | [Data]()
 ![Overview](doc/overview.png)
 
-## Prerequisites
+## 🌱 Prerequisites
 - OS: Ubuntu 20.04.4 LTS
 - GPU: NVIDIA TITAN RTX
 - Python package manager `conda`
-## Setup
+## 🌱 Setup
 ### Datasets 
 Download and put datasets under folder `data/` by running:
 ```
@@ -28,7 +28,7 @@ Download pretrained model weights for evaluation without training from scratch:
 ```
 bash run/checkpoints.sh
 ```
-## Usage 
+## 🌱 Usage 
 We provide hyperparameters for each experiment in config file `configs/*.yaml`, which is used for training and evaluation. For example, `replica-kitchen.yaml` corresponds to *Replica* dataset *Kitchen* scene, and `tat-barn.yaml` corresponds to *Tanks&Temple* dataset *Barn* scene.
 
 ### Training 
