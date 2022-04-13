@@ -35,10 +35,16 @@ We provide hyperparameters for each experiment in config file `configs/*.yaml`, 
 Train the teacher and experts model by running:
 ```
 bash run/train.sh [config]
-# example
-bash run/train.sh replica-kitchen
+# example: bash run/train.sh replica-kitchen
 ```
 ### Evaluation
+Render testing images and evaluate metrics (i.e. PSNR, SSIM, LPIPS) by running:
+```
+bash run/eval.sh [config]
+# example: bash run/eval.sh replica-kitchen
+```
+The rendered images are put under folder `output_images/[config]/experts/color/valid/`
 ### CUDA Acceleration
+@Hao-Yu please complete this part.
 
 BibTex
