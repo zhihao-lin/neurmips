@@ -20,8 +20,13 @@ Install all python packages for training and evaluation with conda environment s
 conda env create -f environment.yml
 conda activate neurmips
 ```
-### CUDA extension
-@Hao-Yu please complete this part.
+### CUDA extension installation
+Compile the extension directly by running:
+```bash
+cd cuda/
+python setup.py develop
+```
+Note that if you need to modify this CUDA code, simply compile again after your modification.
 
 ### Pretrained models (optional)
 Download pretrained model weights for evaluation without training from scratch:
@@ -45,6 +50,10 @@ bash run/eval.sh [config]
 ```
 The rendered images are put under folder `output_images/[config]/experts/color/valid/`
 ### CUDA Acceleration
-@Hao-Yu please complete this part.
+To render testing images with optimized CUDA code by running:
+```bash
+bash run/eval_fast.sh [config]
+# example: bash run/eval_fast.sh replica-kitchen
+```
 
 BibTex
