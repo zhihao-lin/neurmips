@@ -13,7 +13,7 @@ The Replica dataset is composed of several indoor scenes, and we generate data o
 ```bash
 <scene>/<split>      # split=train/valid
 |- dense
-    |- points3D.txt  # point cloud reconstructed with COLMAP
+    |- points3D.txt  # point cloud reconstructed from training views
 |- images            # RGB images
     |- 00000.jpg
     |- 00001.jpg
@@ -25,11 +25,22 @@ The Replica dataset is composed of several indoor scenes, and we generate data o
 ```
 ## 👨‍👩‍👦 Tanks&Temple
 ### Data Generation
+We download dataset from project [NSVF](https://github.com/facebookresearch/NSVF) $^5$, and transform the camera coordinate system to PyTorch3D convention. *@Hao-Yu provide details and code.* Besides, we reconstruct point cloud from training views with [COLMAP](https://colmap.github.io/) $^{3,4}$.
 ### Format
+```bash 
+<scene>/<split>    # split=train/valid
+|- images          # RGB images
+    |- *.png
+|- cameras.txt     # Camera intrinsics: image size, focal length, principle point
+|- points3D.npy    # point cloud reconstructed from training views
+|- R.npy           # camera extrinsics: rotation
+|- T.npy           # camera extrinsics: translation
 
+```
 ---
 #### References
 1. *The Replica Dataset: A Digital Replica of Indoor Spaces*, in ArXiv, 2019
 2. *BlenderProc*, in ArXiv, 2019
 3. *Structure-from-Motion Revisited*, in CVPR, 2016
 4. *Pixelwise View Selection for Unstructured Multi-View Stereo*, in ECCV, 2016
+5. *Neural Sparse Voxel Fields*, in NeurIPS, 2020
