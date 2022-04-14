@@ -10,13 +10,13 @@ This is the official repo for PyTorch implementation of paper "NeurMips: Neural 
 ## 🌱 Setup
 ### Datasets 
 Download and put datasets under folder `data/` by running:
-```
+```bash
 bash run/dataset.sh
 ```
 For more details of file structure and camera convention, please refer to [Dataset](doc/dataset.md). 
 ### Environment
 Install all python packages for training and evaluation with conda environment setup file: 
-```
+```bash
 conda env create -f environment.yml
 conda activate neurmips
 ```
@@ -25,7 +25,7 @@ conda activate neurmips
 
 ### Pretrained models (optional)
 Download pretrained model weights for evaluation without training from scratch:
-```
+```bash
 bash run/checkpoints.sh
 ```
 ## 🌱 Usage 
@@ -33,13 +33,13 @@ We provide hyperparameters for each experiment in config file `configs/*.yaml`, 
 
 ### Training 
 Train the teacher and experts model by running:
-```
+```bash
 bash run/train.sh [config]
 # example: bash run/train.sh replica-kitchen
 ```
 ### Evaluation
 Render testing images and evaluate metrics (i.e. PSNR, SSIM, LPIPS) by running:
-```
+```bash
 bash run/eval.sh [config]
 # example: bash run/eval.sh replica-kitchen
 ```
