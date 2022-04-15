@@ -86,7 +86,7 @@ def main(cfg: DictConfig):
     output_dir = os.path.join(CURRENT_DIR, 'output_images', cfg.name, 'experts_cuda')
     os.makedirs(output_dir, exist_ok=True)
 
-    W, H = cfg.data.image_size
+    H, W = cfg.data.image_size
 
     num_networks = int(cfg.model.n_plane)
     model_params = serialize_model_params(model, num_networks)
@@ -296,13 +296,18 @@ def main(cfg: DictConfig):
         total_time_integrate += time.time() - start_time
         total_time += time.time() - global_start_time
 
-        # Save images
         folder_path = os.path.join(output_dir, 'color', options)
         if not os.path.isdir(folder_path):
             os.makedirs(folder_path)
-        image_path = os.path.join(folder_path, '{:0>5}.png'.format(i))
+        # Save rendering images
+        image_path = os.path.join(folder_path, '{:0>5}-pred.png'.format(i))
         image = tensor2Image(rgb_map)
         image.save(image_path)
+        # Save ground truth images
+        gt_image_path = os.path.join(folder_path, '{:0>5}-gt.png'.format(i))
+        gt_image = data['color']
+        gt_image = tensor2Image(gt_image)
+        gt_image.save(gt_image_path)
 
         torch.cuda.synchronize()
 

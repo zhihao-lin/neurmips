@@ -55,5 +55,6 @@ To render testing images with optimized CUDA code by running:
 bash run/eval_fast.sh [config]
 # example: bash run/eval_fast.sh replica-kitchen
 ```
+The rendered images are put under folder `output_images/[config]/experts_cuda/color/valid/`
 
 BibTex
