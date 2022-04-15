@@ -25,7 +25,11 @@ The Replica dataset is composed of several indoor scenes, and we generate data o
 ```
 ## 👨‍👩‍👦 Tanks&Temple
 ### Data Generation
-We download dataset from project [NSVF](https://github.com/facebookresearch/NSVF) $^5$, and transform the camera coordinate system to PyTorch3D convention. *@Hao-Yu provide details and code.* Besides, we reconstruct point cloud from training views with [COLMAP](https://colmap.github.io/) $^{3,4}$.
+We download dataset from project [NSVF](https://github.com/facebookresearch/NSVF) $^5$, and transform the camera coordinate system to PyTorch3D convention. Besides, we reconstruct point cloud from training views with [COLMAP](https://colmap.github.io/) $^{3,4}$. Below, we provide a python script for conversion (NSVF to PyTorch3D).
+```bash
+python dataset_convert.py --dataset_dir [directory of NSVF dataset] --output_dir [directory of converted dataset] --img_w [width] --img_h [height]
+# example: python dataset_convert.py --dataset_dir TanksAndTemple/ --output_dir convert/TanksAndTemple --img_w 1920 --img_h 1080
+```
 ### Format
 ```bash 
 <scene>/<split>    # split=train/valid
