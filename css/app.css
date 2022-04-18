@@ -157,3 +157,8 @@ span.highlight {
 	margin-left: 0.5em;
 	margin-right: 0.5em;
 }
+
+.video-replica{
+  width: 192;
+  height: 64; 
+}
