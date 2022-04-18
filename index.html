@@ -13,26 +13,7 @@
 
     <!-- <base href="/"> -->
 
-        <!--FACEBOOK-->
-    <!-- <meta property="og:image" content="https://jonbarron.info/mipnerf/img/rays_square.png">
-    <meta property="og:image:type" content="image/png">
-    <meta property="og:image:width" content="682">
-    <meta property="og:image:height" content="682">
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://jonbarron.info/mipnerf/"/>
-    <meta property="og:title" content="mip-NeRF" />
-    <meta property="og:description" content="Project page for Mip-NeRF: A Multiscale Representation for Anti-Aliasing Neural Radiance Fields." /> -->
-
-        <!--TWITTER-->
-    <!-- <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="mip-NeRF" />
-    <meta name="twitter:description" content="Project page for Mip-NeRF: A Multiscale Representation for Anti-Aliasing Neural Radiance Fields." />
-    <meta name="twitter:image" content="https://jonbarron.info/mipnerf/img/rays_square.png" /> -->
-
-
-<!--     <link rel="apple-touch-icon" href="apple-touch-icon.png"> -->
-  <!-- <link rel="icon" type="image/png" href="img/seal_icon.png"> -->
-    <!-- Place favicon.ico in the root directory -->
+   
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
@@ -45,6 +26,8 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.8.0/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.5.3/clipboard.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <script src="js/app.js"></script>
 </head>
@@ -64,38 +47,58 @@
                 <ul class="list-inline">
                     <li>
                         <a href="http://zhihao-lin.github.io">
-                          Zhi-Hao Lin
+                          Zhi-Hao Lin \(^{1, 2}\)
                         </a>
                         </br>NTU
                     </li>
                     <li>
                         <a href="https://people.csail.mit.edu/weichium/">
-                            Wei-Chiu Ma
+                            Wei-Chiu Ma \(^2\)
                         </a>
                         </br>MIT
                     </li>
                     <li>
                         <a href="">
-                          Hao-Yu Hsu
+                          Hao-Yu Hsu \(^3\)
                         </a>
                         </br>NTU
-                    </li><br>
+                    </li>
                     <li>
                         <a href="http://vllab.ee.ntu.edu.tw/ycwang.html">
-                          Yu-Chiang Frank Wang
+                          Yu-Chiang Frank Wang \(^3\)
                         </a>
                         </br>NTU
                     </li>
                     <li>
                         <a href="https://shenlong.web.illinois.edu/">
-                          Shenlong Wang
+                          Shenlong Wang \(^1\)
                         </a>
                         </br>UIUC
                     </li>
                 </ul>
             </div>
         </div>
-
+        <div class="row">
+            <div class="col-md-12 text-center">
+                <ul class="list-inline">
+                    <li>
+                        <a >
+                          \(^1\)University of Illinois at Urbana-Champaign
+                        </a>
+                    </li>
+                    <li>
+                        <a >
+                          \(^2\)Massachusetts Institute of Technology
+                        </a>
+                    </li>
+                    <li>
+                        <a >
+                          \(^3\)National Taiwan University
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
 
         <div class="row">
                 <div class="col-md-4 col-md-offset-4 text-center">
