@@ -50,17 +50,17 @@
                     </li>
                     <li>
                         <a href="https://people.csail.mit.edu/weichium/">
-                            Wei-Chiu Ma \(^2\)
+                            Wei-Chiu Ma \(^3\)
                         </a>
                     </li>
                     <li>
                         <a href="">
-                          Hao-Yu Hsu \(^3\)
+                          Hao-Yu Hsu \(^2\)
                         </a>
                     </li>
                     <li>
                         <a href="http://vllab.ee.ntu.edu.tw/ycwang.html">
-                          Yu-Chiang Frank Wang \(^3\)
+                          Yu-Chiang Frank Wang \(^2\)
                         </a>
                     </li>
                     <li>
@@ -78,10 +78,10 @@
                         \(^1\) University of Illinois at Urbana-Champaign
                     </li>
                     <li>
-                        \(^2\) Massachusetts Institute of Technology
+                        \(^2\) National Taiwan University
                     </li>
                     <li>
-                        \(^3\) National Taiwan University
+                        \(^3\) Massachusetts Institute of Technology
                     </li>
                 </ul>
             </div>
@@ -91,19 +91,19 @@
                 <div class="col-md-4 col-md-offset-4 text-center">
                     <ul class="nav nav-pills nav-justified">
                         <li>
-                            <a href="https://arxiv.org/abs/2103.13415">
-                            <image src="img/mip_paper_image.jpg" height="60px">
+                            <a href="">
+                            <image src="img/neurmips_paper_cover.png" height="60px">
                                 <h4><strong>Paper</strong></h4>
                             </a>
                         </li>
                         <li>
-                            <a href="https://youtu.be/EpH175PY1A0">
+                            <a href="">
                             <image src="img/youtube_icon.png" height="60px">
                                 <h4><strong>Video</strong></h4>
                             </a>
                         </li>
                         <li>
-                            <a href="https://github.com/google/mipnerf">
+                            <a href="https://github.com/zhihao-lin/neurmips">
                             <image src="img/github.png" height="60px">
                                 <h4><strong>Code</strong></h4>
                             </a>
@@ -119,11 +119,13 @@
                 <h3>
                     Abstract
                 </h3>
-                <image src="img/rays.png" class="img-responsive" alt="overview"><br>
+                <image src="img/overview.png" class="img-responsive" alt="overview"><br>
                 <p class="text-justify">
-The rendering procedure used by neural radiance fields (NeRF) samples a scene with a single ray per pixel and may therefore produce renderings that are excessively blurred or aliased when training or testing images observe scene content at different resolutions. The straightforward solution of supersampling by rendering with multiple rays per pixel is impractical for NeRF, because rendering each ray requires querying a multilayer perceptron hundreds of times. Our solution, which we call "mip-NeRF" (à la "mipmap"), extends NeRF to represent the scene at a continuously-valued scale.
-By efficiently rendering anti-aliased conical frustums instead of rays, mip-NeRF reduces objectionable aliasing artifacts and significantly improves NeRF's ability to represent fine details, while also being 7% faster than NeRF and half the size.
-Compared to NeRF, mip-NeRF reduces average error rates by 17% on the dataset presented with NeRF and by 60% on a challenging multiscale variant of that dataset that we present. mip-NeRF is also able to match the accuracy of a brute-force supersampled NeRF on our multiscale dataset while being 22x faster.
+                We present Neural Mixtures of Planar Experts (<b>NeurMiPs</b>), a novel planar-based scene representation for modeling geometry and appearance. 
+                NeurMiPs leverages a collection of local planar experts in 3D space as the scene representation.  Each planar expert consists of the parameters of the local rectangular shape representing geometry and a neural radiance field modeling the color and opacity.  
+                We render novel views by calculating ray-plane intersections and composite output colors and densities at intersected points to the image. 
+                NeurMiPs blends the efficiency of explicit mesh rendering and flexibility of the neural radiance field. 
+                Experiments demonstrate superior performance and speed of our proposed method, compared to other 3D representations in novel view synthesis.
                 </p>
             </div>
         </div>
