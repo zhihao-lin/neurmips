@@ -159,6 +159,8 @@ span.highlight {
 }
 
 .video-replica{
-  width: 740px;
-  height: 250px; 
+  width: 720px;
+  height: 240px; 
+  margin: auto;
+  border: 5px
 }
