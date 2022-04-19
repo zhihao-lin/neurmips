@@ -159,7 +159,17 @@ span.highlight {
 }
 
 .video-replica{
-  width: 90%;
-  height: 90%; 
-  margin: auto;
+  width: 720px;
+  height: 240px;
+  margin-top: 5px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.video-tat{
+  width: 720px;
+  height: 405px;
+  margin-top: 5px;
+  margin-left: auto;
+  margin-right: auto;
 }
