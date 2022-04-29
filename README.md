@@ -1,6 +1,6 @@
 # NeurMips: Neural Mixture of Planar Experts for View Synthesis
 This is the official repo for PyTorch implementation of paper "NeurMips: Neural Mixture of Planar Experts for View Synthesis", CVPR 2022. 
-### [Paper]() | [Project page](https://zhihao-lin.github.io/neurmips/) | [Video](https://youtu.be/PV1dCTWL5Oo)
+### [Paper](https://arxiv.org/abs/2204.13696) | [Project page](https://zhihao-lin.github.io/neurmips/) | [Video](https://youtu.be/PV1dCTWL5Oo)
 ![Overview](doc/overview.png)
 
 ## 🌱 Prerequisites
