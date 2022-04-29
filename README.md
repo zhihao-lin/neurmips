@@ -58,3 +58,11 @@ bash run/eval_fast.sh [config]
 The rendered images are put under folder `output_images/[config]/experts_cuda/color/valid/`
 
 BibTex
+```
+@inproceedings{lin2022neurmips,
+  title={NeurMiPs: Neural Mixture of Planar Experts for View Synthesis},
+  author = {Lin, Zhi-Hao and Ma, Wei-Chiu and Hsu, Hao-Yu and Wang, Yu-Chiang Frank and Wang, Shenlong},
+  year={2022},
+  booktitle={CVPR},
+}
+```
